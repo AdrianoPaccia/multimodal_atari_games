@@ -6,6 +6,8 @@ from scipy.signal import convolve2d
 import random
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from PIL import Image
+import os
 
 class ImageNoise:
     def __init__(self, noise_types: list, config: dict):
@@ -33,12 +35,15 @@ class ImageNoise:
             noisy_image = self.apply_quantization_noise(img)
         elif noise_type == 'confounders_noise':
             noisy_image = self.apply_confounders_noise(img)
+        elif noise_type == 'apply_background_noise':
+            noisy_image = self.apply_background_noise(img)
+
         else:
             raise ValueError(f"Unsupported noise type: {noise_type}")
         return noisy_image
 
     def apply_random_noise(self, image):
-        noise_type = random.choice(list(self.config.keys()))
+        noise_type = random.choice(list(self.noise_types))
         return self.apply_noise(noise_type, image), noise_type
 
     def apply_all_noises(self,image):
@@ -117,10 +122,41 @@ class ImageNoise:
             side_2 = random.randint(min_patch_size, max_patch_size)
             x = random.randint(0, width - side_1)
             y = random.randint(0, height - side_2)
-            print(np.array(noisy_image).shape)
             for i in range(3):
                 noisy_image[y:y+side_1, x:x+side_2,i] = random.uniform(0,225)
         return noisy_image
+
+    def apply_background_noise(self, original_image):
+
+        #randomly get an image as background
+        image_files = os.listdir(self.config['img_path'])
+        image_files = [file for file in image_files if file.endswith(('.jpg', '.jpeg', '.png'))]
+        random_image = random.choice(image_files)
+        bg_image = Image.open(os.path.join(self.config['img_path'],random_image))
+        bg_image = bg_image.resize(original_image.shape[:2])
+        background_image = np.array(bg_image)
+
+        #background_image = np.random.randint(0, 256, original_image.shape, dtype=np.uint8)
+        original_image = np.array(original_image.copy()).astype(np.uint8)
+
+        if original_image.shape != background_image.shape:
+            raise ValueError("Original and disturbing images must have the same size")
+
+        gray = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+
+        # Create the mask and is ocmplementary (for the background image) appling Otsu's thresholding and get a 3 channels mask
+        _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        foreground_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+        background_mask = cv2.bitwise_not(foreground_mask)
+        background_mask = (background_mask.astype(np.float32) / 255.0)
+        foreground_mask = (foreground_mask.astype(np.float32) / 255.0)
+
+        # Combine the foreground and background
+        composite_image = (background_mask * background_image) + (foreground_mask * original_image)
+        composite_image = np.clip(composite_image,0,255).astype(int)
+
+        return composite_image
+
 
     def _motion_blur_kernel(self, size, angle):
         kernel = np.zeros((size, size))

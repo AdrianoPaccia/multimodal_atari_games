@@ -5,7 +5,9 @@ from enum import Enum
 import pyglet
 from gym.envs.classic_control import rendering
 from gym.envs.classic_control.pendulum import PendulumEnv
-
+import os
+from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise, SoundNoise
+import random
 
 def modified_doppler_effect(freq, obs_pos, obs_vel, obs_speed, src_pos,
                             src_vel, src_speed, sound_vel):
@@ -99,11 +101,15 @@ class PendulumSound(PendulumEnv):
             original_frequency=440.,
             sound_vel=20.,
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
+            noise_freq:float=0.0,
+            image_noise_generator=ImageNoise(['poisson_noise'], {}),
             debug=False):
         super().__init__()
         self.original_frequency = original_frequency
         self.sound_vel = sound_vel
         self.sound_receivers = sound_receivers
+        self.noise_freq = noise_freq
+        self.image_noise_generator = image_noise_generator
         self._debug = debug
 
         self.reset()
@@ -139,6 +145,8 @@ class PendulumSound(PendulumEnv):
         sound_observation = list(zip(self._frequencies, self._amplitudes))
 
         img_observation = self.render(mode='rgb_array')
+        if random.random() < self.noise_freq:
+            img_observation, noise_type = self.image_noise_generator.apply_random_noise(img_observation)
 
         if self._debug:
             self._debug_data['pos'].append(src_pos)

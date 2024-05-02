@@ -30,3 +30,5 @@ confounders_noise:
   max_size: 20
   min_size: 10
   max_num_patches: 3
+
+img_path: '/home/adriano/Desktop/multimodal_reinforcement_learning/images'
