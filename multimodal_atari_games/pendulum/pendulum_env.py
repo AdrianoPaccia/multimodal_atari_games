@@ -49,10 +49,10 @@ RIGHT_MARGIN = -2.2
 
 
 class CustomViewer(rendering.Viewer):
-    def __init__(self, width, height, display=None):
+    def __init__(self, width, height, display=None,visible=False):
         super().__init__(width, height, display=None)
         self.window = pyglet.window.Window(
-            width=width, height=height, display=display, vsync=False)
+            width=width, height=height, display=display, vsync=False, visible=visible)
 
 
 class SoundReceiver(object):
@@ -103,6 +103,7 @@ class PendulumSound(PendulumEnv):
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
             noise_freq:float=0.0,
             image_noise_generator=ImageNoise(['poisson_noise'], {}),
+            visible=False,
             debug=False):
         super().__init__()
         self.original_frequency = original_frequency
@@ -110,6 +111,7 @@ class PendulumSound(PendulumEnv):
         self.sound_receivers = sound_receivers
         self.noise_freq = noise_freq
         self.image_noise_generator = image_noise_generator
+        self.visible = visible
         self._debug = debug
 
         self.reset()
@@ -157,7 +159,7 @@ class PendulumSound(PendulumEnv):
 
     def render(self, mode='human', sound_channel=0, sound_duration=.1):
         if self.viewer is None:
-            self.viewer = CustomViewer(100, 100)
+            self.viewer = CustomViewer(100, 100, visible=self.visible)
             self.viewer.set_bounds(-2.2, 2.2, -2.2, 2.2)
             rod = rendering.make_capsule(1, .2)
             rod.set_color(.8, .3, .3)
@@ -175,7 +177,7 @@ class PendulumSound(PendulumEnv):
                 frequency=self._frequencies[sound_channel],
                 duration=sound_duration)
 
-        return self.viewer.render(return_rgb_array=(mode == 'rgb_array'))
+        return self.viewer.render(return_rgb_array=(mode == 'rgb_array'),)
 
     def reset(self, num_initial_steps=1):
         observation = super().reset()
