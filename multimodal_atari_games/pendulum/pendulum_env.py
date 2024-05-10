@@ -1,4 +1,5 @@
-from pysine import sine
+
+
 import numpy as np
 import pickle
 from enum import Enum
@@ -8,6 +9,11 @@ from gym.envs.classic_control.pendulum import PendulumEnv
 import os
 from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise, SoundNoise
 import random
+try:
+    from pysine import sine
+    pysine_available = True
+except:
+    pysine_available = False
 
 def modified_doppler_effect(freq, obs_pos, obs_vel, obs_speed, src_pos,
                             src_vel, src_speed, sound_vel):
@@ -172,7 +178,7 @@ class PendulumSound(PendulumEnv):
         self.pole_transform.set_rotation(self.state[0] + np.pi / 2)
 
         # only play sound in human mode
-        if self._frequencies[sound_channel] and (mode == 'human'):
+        if self._frequencies[sound_channel] and (mode == 'human') and pysine_available:
             sine(
                 frequency=self._frequencies[sound_channel],
                 duration=sound_duration)
