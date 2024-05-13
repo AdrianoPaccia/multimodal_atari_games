@@ -1,11 +1,9 @@
 import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from scipy.ndimage.filters import convolve
 from scipy.signal import convolve2d
 import random
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from PIL import Image
 import os
 

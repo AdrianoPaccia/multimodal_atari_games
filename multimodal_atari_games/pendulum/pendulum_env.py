@@ -3,10 +3,6 @@
 import numpy as np
 import pickle
 from enum import Enum
-import pyglet
-from pyglet.gl import *
-import os
-from gym.envs.classic_control import rendering
 from gym.envs.classic_control.pendulum import PendulumEnv
 from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise
 import random
