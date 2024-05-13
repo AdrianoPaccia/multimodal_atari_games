@@ -4,10 +4,11 @@ import numpy as np
 import pickle
 from enum import Enum
 import pyglet
+from pyglet.gl import *
+import os
 from gym.envs.classic_control import rendering
 from gym.envs.classic_control.pendulum import PendulumEnv
-import os
-from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise, SoundNoise
+from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise
 import random
 try:
     from pysine import sine
@@ -52,14 +53,6 @@ BOTTOM_MARGIN = -2.2
 TOP_MARGIN = 2.2
 LEFT_MARGIN = 2.2
 RIGHT_MARGIN = -2.2
-
-
-class CustomViewer(rendering.Viewer):
-    def __init__(self, width, height, display=None,visible=False):
-        super().__init__(width, height, display=None)
-        self.window = pyglet.window.Window(
-            width=width, height=height, display=display, vsync=False, visible=visible)
-
 
 class SoundReceiver(object):
     class Location(Enum):
@@ -109,7 +102,7 @@ class PendulumSound(PendulumEnv):
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
             noise_freq:float=0.0,
             image_noise_generator=ImageNoise(['poisson_noise'], {}),
-            visible=False,
+            rendering_mode=False,
             debug=False):
         super().__init__()
         self.original_frequency = original_frequency
@@ -117,8 +110,14 @@ class PendulumSound(PendulumEnv):
         self.sound_receivers = sound_receivers
         self.noise_freq = noise_freq
         self.image_noise_generator = image_noise_generator
-        self.visible = visible
+        self.rendering_mode = rendering_mode
         self._debug = debug
+
+        #rendering stuff
+        self.screen_dim = 100
+        self.screen = None
+        self.clock = None
+        self.isopen = True
 
         self.reset()
 
@@ -152,7 +151,9 @@ class PendulumSound(PendulumEnv):
         ]
         sound_observation = list(zip(self._frequencies, self._amplitudes))
 
-        img_observation = self.render(mode='rgb_array')
+        img_observation = self.render(mode=self.rendering_mode)
+        #img_observation = self.render(mode='human')
+
         if random.random() < self.noise_freq:
             img_observation, noise_type = self.image_noise_generator.apply_random_noise(img_observation)
 
@@ -164,8 +165,81 @@ class PendulumSound(PendulumEnv):
         return (img_observation, sound_observation), reward, done, info
 
     def render(self, mode='human', sound_channel=0, sound_duration=.1):
-        if self.viewer is None:
-            self.viewer = CustomViewer(100, 100, visible=self.visible)
+        try:
+            import pygame
+            from pygame import gfxdraw
+        except ImportError:
+            raise DependencyNotInstalled(
+                "pygame is not installed, run `pip install gym[classic_control]`"
+            )
+
+        if self.screen is None:
+            pygame.init()
+            if mode == "human":
+                pygame.display.init()
+                self.screen = pygame.display.set_mode(
+                    (self.screen_dim, self.screen_dim)
+                )
+            else:  # mode in "rgb_array"
+                self.screen = pygame.Surface((self.screen_dim, self.screen_dim))
+        if self.clock is None:
+            self.clock = pygame.time.Clock()
+
+        self.surf = pygame.Surface((self.screen_dim, self.screen_dim))
+        self.surf.fill((255, 255, 255))
+
+        bound = 2.2
+        scale = self.screen_dim / (bound * 2)
+        offset = self.screen_dim // 2
+
+        rod_length = 1 * scale
+        rod_width = 0.2 * scale
+        l, r, t, b = 0, rod_length, rod_width / 2, -rod_width / 2
+        coords = [(l, b), (l, t), (r, t), (r, b)]
+        transformed_coords = []
+        for c in coords:
+            c = pygame.math.Vector2(c).rotate_rad(self.state[0] + np.pi / 2)
+            c = (c[0] + offset, c[1] + offset)
+            transformed_coords.append(c)
+        gfxdraw.aapolygon(self.surf, transformed_coords, (204, 77, 77))
+        gfxdraw.filled_polygon(self.surf, transformed_coords, (204, 77, 77))
+
+        gfxdraw.aacircle(self.surf, offset, offset, int(rod_width / 2), (204, 77, 77))
+        gfxdraw.filled_circle(
+            self.surf, offset, offset, int(rod_width / 2), (204, 77, 77)
+        )
+
+        rod_end = (rod_length, 0)
+        rod_end = pygame.math.Vector2(rod_end).rotate_rad(self.state[0] + np.pi / 2)
+        rod_end = (int(rod_end[0] + offset), int(rod_end[1] + offset))
+        gfxdraw.aacircle(
+            self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
+        )
+        gfxdraw.filled_circle(
+            self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
+        )
+
+        # drawing axle
+        gfxdraw.aacircle(self.surf, offset, offset, int(0.05 * scale), (0, 0, 0))
+        gfxdraw.filled_circle(self.surf, offset, offset, int(0.05 * scale), (0, 0, 0))
+
+        self.surf = pygame.transform.flip(self.surf, False, True)
+        self.screen.blit(self.surf, (0, 0))
+        if mode == "human":
+            pygame.event.pump()
+            self.clock.tick(10)
+            pygame.display.flip()
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
+            )
+
+        else:  # mode == "rgb_array":
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
+            )
+
+        '''if self.viewer is None:
+            self.viewer = CustomViewer(100, 100, rendering=self.rendering)
             self.viewer.set_bounds(-2.2, 2.2, -2.2, 2.2)
             rod = rendering.make_capsule(1, .2)
             rod.set_color(.8, .3, .3)
@@ -183,7 +257,7 @@ class PendulumSound(PendulumEnv):
                 frequency=self._frequencies[sound_channel],
                 duration=sound_duration)
 
-        return self.viewer.render(return_rgb_array=(mode == 'rgb_array'),)
+        return self.viewer.render(return_rgb_array=(mode == 'rgb_array'),)'''
 
     def reset(self, num_initial_steps=1):
         observation = super().reset()
