@@ -97,6 +97,7 @@ class PendulumSound(PendulumEnv):
             sound_vel=20.,
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
             noise_freq:float=0.0,
+            noise_type:str='gaussian_noise',
             image_noise_generator=ImageNoise(['poisson_noise'], {}),
             rendering_mode=False,
             debug=False):
@@ -105,6 +106,7 @@ class PendulumSound(PendulumEnv):
         self.sound_vel = sound_vel
         self.sound_receivers = sound_receivers
         self.noise_freq = noise_freq
+        self.noise_type = noise_type
         self.image_noise_generator = image_noise_generator
         self.rendering_mode = rendering_mode
         self._debug = debug
@@ -151,7 +153,11 @@ class PendulumSound(PendulumEnv):
         #img_observation = self.render(mode='human')
 
         if random.random() < self.noise_freq:
-            img_observation, noise_type = self.image_noise_generator.apply_random_noise(img_observation)
+            #img_observation = self.image_noise_generator.apply_random_noise(img_observation)
+            img_observation = self.image_noise_generator.apply_noise(
+                noise_type=self.noise_type,
+                image=img_observation
+            )
 
         if self._debug:
             self._debug_data['pos'].append(src_pos)

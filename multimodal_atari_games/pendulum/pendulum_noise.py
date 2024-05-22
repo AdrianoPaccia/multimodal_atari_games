@@ -42,7 +42,7 @@ class ImageNoise:
 
     def apply_random_noise(self, image):
         noise_type = random.choice(list(self.noise_types))
-        return self.apply_noise(noise_type, image), noise_type
+        return self.apply_noise(noise_type, image)
 
     def apply_all_noises(self,image):
         noisy_images = []
