@@ -33,7 +33,7 @@ class ImageNoise:
             noisy_image = self.apply_quantization_noise(img)
         elif noise_type == 'confounders_noise':
             noisy_image = self.apply_confounders_noise(img)
-        elif noise_type == 'apply_background_noise':
+        elif noise_type == 'background_noise':
             noisy_image = self.apply_background_noise(img)
 
         else:
