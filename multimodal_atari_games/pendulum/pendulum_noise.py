@@ -125,12 +125,12 @@ class ImageNoise:
         return noisy_image
 
     def apply_background_noise(self, original_image):
-
+        img_path = os.getcwd()+ self.config['img_path']
         #randomly get an image as background
-        image_files = os.listdir(self.config['img_path'])
+        image_files = os.listdir(img_path)
         image_files = [file for file in image_files if file.endswith(('.jpg', '.jpeg', '.png'))]
         random_image = random.choice(image_files)
-        bg_image = Image.open(os.path.join(self.config['img_path'],random_image))
+        bg_image = Image.open(os.path.join(img_path,random_image))
         bg_image = bg_image.resize(original_image.shape[:2])
         background_image = np.array(bg_image)
 

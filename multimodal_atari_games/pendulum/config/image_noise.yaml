@@ -31,4 +31,4 @@ confounders_noise:
   min_size: 10
   max_num_patches: 3
 
-img_path: '/bg_images'
+img_path: '/multimodal_atari_games/bg_images'
