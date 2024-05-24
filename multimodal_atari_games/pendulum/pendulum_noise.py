@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy.signal import convolve2d
