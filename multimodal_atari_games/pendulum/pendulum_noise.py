@@ -56,7 +56,7 @@ class ImageNoise:
         mean = self.config['gaussian_noise']['mu']
         stddev = self.config['gaussian_noise']['std']
         noise = np.random.normal(mean, stddev, image.shape).astype(np.uint8)
-        noisy_image = cv2.add(image, noise)
+        noisy_image = np.clip(image.astype(np.int16) + noise.astype(np.int16), 0, 255).astype(np.uint8)
         return noisy_image
 
     def apply_salt_pepper_noise(self, image):
@@ -70,9 +70,7 @@ class ImageNoise:
     def apply_poisson_noise(self, image):
         noisy_image = np.random.poisson(image)
         return np.clip(noisy_image, 0, 255).astype(np.uint8)
-        #lam = self.config['poisson_noise']['lam']
-        #noisy_image = np.random.poisson(lam, image.shape)
-        #return np.clip(noisy_image, 0, 255).astype(np.uint8)
+
 
     def apply_speckle_noise(self, image):
         noise = np.random.normal(0, 1, size=image.shape)
@@ -140,18 +138,21 @@ class ImageNoise:
         if original_image.shape != background_image.shape:
             raise ValueError("Original and disturbing images must have the same size")
 
-        gray = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+        gray = np.dot(original_image[..., :3], [0.2989, 0.5870, 0.1140])
 
-        # Create the mask and is ocmplementary (for the background image) appling Otsu's thresholding and get a 3 channels mask
-        _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        foreground_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        background_mask = cv2.bitwise_not(foreground_mask)
-        background_mask = (background_mask.astype(np.float32) / 255.0)
+        # Apply Otsu's thresholding
+        threshold = np.mean(gray)
+        mask = (gray < threshold).astype(np.uint8) * 255
+
+        # Create the masks
+        foreground_mask = np.stack([mask] * 3, axis=-1)
+        background_mask = 255 - foreground_mask
         foreground_mask = (foreground_mask.astype(np.float32) / 255.0)
+        background_mask = (background_mask.astype(np.float32) / 255.0)
 
         # Combine the foreground and background
         composite_image = (background_mask * background_image) + (foreground_mask * original_image)
-        composite_image = np.clip(composite_image,0,255).astype(int)
+        composite_image = np.clip(composite_image, 0, 255).astype(np.uint8)
 
         return composite_image
 
