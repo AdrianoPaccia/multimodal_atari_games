@@ -123,6 +123,10 @@ class PendulumSound(PendulumEnv):
         observation, reward, done, info = super().step(a)
 
         x, y, thdot = observation
+
+        th = np.arctan2(y,x)
+        true_state = (th, thdot)
+
         abs_src_vel = np.abs(thdot * 1)  # v = w . r
         # compute ccw perpendicular vector. if angular velocity is
         # negative, we reverse it. then multiply by absolute velocity
@@ -164,7 +168,7 @@ class PendulumSound(PendulumEnv):
             self._debug_data['vel'].append(src_vel)
             self._debug_data['sound'].append(self._frequencies)
 
-        return (img_observation, sound_observation), reward, done, info
+        return (img_observation, sound_observation), reward, done, info, true_state
 
     def render(self, mode='human', sound_channel=0, sound_duration=.1):
         try:
@@ -283,9 +287,9 @@ class PendulumSound(PendulumEnv):
             raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
 
         for _ in range(num_initial_steps):
-            (observation, sound), _, _, _ = self.step(np.array([0.0]))
+            (observation, sound), _, _, _, true_state = self.step(np.array([0.0]))
 
-        return observation, sound
+        return (observation, sound) ,true_state
 
     def close(self, out=None):
         super().close()
