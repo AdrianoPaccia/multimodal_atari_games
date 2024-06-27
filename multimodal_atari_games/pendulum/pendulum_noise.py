@@ -5,11 +5,20 @@ import random
 import matplotlib.pyplot as plt
 from PIL import Image
 import os
+import yaml
 
 class ImageNoise:
-    def __init__(self, noise_types: list, config: dict):
+    def __init__(self, noise_types: list, frequency:float):
         self.noise_types = noise_types
-        self.config = config
+        self.frequency = frequency
+        #self.config = config
+        self.config = load_config(os.path.join(os.path.dirname(__file__), 'config/image_noise.yaml'))
+        if not set(noise_types).issubset(set(self.config['available_noises'])):
+            raise ValueError("Noise types not supported")
+
+    def get_observation(self, image):
+        noise = random.choice(self.noise_types)
+        return self.apply_noise(noise, image)
 
     def apply_noise(self, noise_type:str, image):
         img = image.copy()
@@ -34,6 +43,8 @@ class ImageNoise:
             noisy_image = self.apply_confounders_noise(img)
         elif noise_type == 'background_noise':
             noisy_image = self.apply_background_noise(img)
+        elif noise_type == 'random_obs':
+            noisy_image = self.get_random_observation()
 
         else:
             raise ValueError(f"Unsupported noise type: {noise_type}")
@@ -121,8 +132,15 @@ class ImageNoise:
                 noisy_image[y:y+side_1, x:x+side_2,i] = random.uniform(0,225)
         return noisy_image
 
+
+    def get_random_observation(self):
+        traj_file = self.config['random_image']['traj_file']
+        images = np.load(os.path.join(os.path.dirname(__file__),traj_file),allow_pickle=True)['images']
+        i_rand = random.randint(0, images.shape[0]-1)
+        return images[i_rand]
+
     def apply_background_noise(self, original_image):
-        img_path = os.getcwd()+ self.config['img_path']
+        img_path = os.path.join(os.path.dirname(__file__), self.config['img_path'])
         #randomly get an image as background
         image_files = os.listdir(img_path)
         image_files = [file for file in image_files if file.endswith(('.jpg', '.jpeg', '.png'))]
@@ -175,9 +193,18 @@ class ImageNoise:
 
 
 class SoundNoise:
-    def __init__(self, noise_types: list, config: dict):
+    def __init__(self, noise_types: list, frequency:float):
         self.noise_types = noise_types
-        self.config = config
+        self.frequency = frequency
+        #self.config = config
+        self.config = load_config(os.path.join(os.path.dirname(__file__), 'config/sound_noise.yaml'))
+        if not set(noise_types).issubset(set(self.config['available_noises'])):
+            raise ValueError("Noise types not supported")
+
+
+    def get_observation(self, sound):
+        noise = random.choice(self.noise_types)
+        return self.apply_noise(noise, sound)
 
     def apply_noise(self, noise_type:str, sound):
         noisy_sound = sound.copy()
@@ -194,6 +221,8 @@ class SoundNoise:
             noisy_sound = self.apply_blue_noise(noisy_sound)
         elif noise_type == 'poisson_noise':
             noisy_sound = self.apply_poisson_noise(noisy_sound)
+        elif noise_type == 'random_obs':
+            noisy_sound = self.get_random_observation()
         else:
             raise ValueError(f"Unsupported noise type: {noise_type}")
         return noisy_sound
@@ -246,8 +275,20 @@ class SoundNoise:
         noisy_sound = sound + poisson_noise
         return noisy_sound
 
+    def get_random_observation(self):
+        traj_file = self.config['random_sound']['traj_file']
+        sounds = np.load(os.path.join(os.path.dirname(__file__), traj_file), allow_pickle=True)['sounds']
+        i_rand = random.randint(0, sounds.shape[0] - 1)
+        return sounds[i_rand]
+
     def print_sounds(self,sounds,noise_types):
         n = len(sounds)
         for sound, noise in zip(sounds,noise_types):
             print(f'noise: {[round(x,3) for x in sound]}')
         
+
+
+def load_config(file):
+    with open(file, 'r') as f:
+        config = yaml.safe_load(f)
+    return config

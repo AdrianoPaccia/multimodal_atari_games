@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 from enum import Enum
 from gym.envs.classic_control.pendulum import PendulumEnv
-from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise
+from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise, SoundNoise
 import random
 try:
     from pysine import sine
@@ -96,18 +96,16 @@ class PendulumSound(PendulumEnv):
             original_frequency=440.,
             sound_vel=20.,
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
-            noise_freq:float=0.0,
-            noise_type:str='gaussian_noise',
-            image_noise_generator=ImageNoise(['poisson_noise'], {}),
-            rendering_mode=False,
+            image_noise_generator=ImageNoise([], 0.0),
+            sound_noise_generator=SoundNoise([], 0.0),
+            rendering_mode='rgb_array',
             debug=False):
         super().__init__()
         self.original_frequency = original_frequency
         self.sound_vel = sound_vel
         self.sound_receivers = sound_receivers
-        self.noise_freq = noise_freq
-        self.noise_type = noise_type
         self.image_noise_generator = image_noise_generator
+        self.sound_noise_generator = sound_noise_generator
         self.rendering_mode = rendering_mode
         self._debug = debug
 
@@ -151,24 +149,22 @@ class PendulumSound(PendulumEnv):
                 obs_pos=rec.pos, src_pos=src_pos)
             for rec in self.sound_receivers
         ]
-        sound_observation = list(zip(self._frequencies, self._amplitudes))
+        snd_observation = list(zip(self._frequencies, self._amplitudes))
+        # get noisy image observation
+        if random.random() < self.sound_noise_generator.frequency:
+            snd_observation = self.sound_noise_generator.get_observation(snd_observation)
 
         img_observation = self.render(mode=self.rendering_mode)
-        #img_observation = self.render(mode='human')
-
-        if random.random() < self.noise_freq:
-            #img_observation = self.image_noise_generator.apply_random_noise(img_observation)
-            img_observation = self.image_noise_generator.apply_noise(
-                noise_type=self.noise_type,
-                image=img_observation
-            )
+        # get noisy image observation
+        if random.random() < self.image_noise_generator.frequency:
+            img_observation = self.image_noise_generator.get_observation(img_observation)
 
         if self._debug:
             self._debug_data['pos'].append(src_pos)
             self._debug_data['vel'].append(src_vel)
             self._debug_data['sound'].append(self._frequencies)
 
-        return (img_observation, sound_observation), reward, done, info, true_state
+        return (img_observation, snd_observation), reward, done, info, true_state
 
     def render(self, mode='human', sound_channel=0, sound_duration=.1):
         try:
@@ -243,27 +239,6 @@ class PendulumSound(PendulumEnv):
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
-
-        '''if self.viewer is None:
-            self.viewer = CustomViewer(100, 100, rendering=self.rendering)
-            self.viewer.set_bounds(-2.2, 2.2, -2.2, 2.2)
-            rod = rendering.make_capsule(1, .2)
-            rod.set_color(.8, .3, .3)
-            self.pole_transform = rendering.Transform()
-            rod.add_attr(self.pole_transform)
-            self.viewer.add_geom(rod)
-            axle = rendering.make_circle(.05)
-            axle.set_color(0, 0, 0)
-            self.viewer.add_geom(axle)
-        self.pole_transform.set_rotation(self.state[0] + np.pi / 2)
-
-        # only play sound in human mode
-        if self._frequencies[sound_channel] and (mode == 'human') and pysine_available:
-            sine(
-                frequency=self._frequencies[sound_channel],
-                duration=sound_duration)
-
-        return self.viewer.render(return_rgb_array=(mode == 'rgb_array'),)'''
 
     def reset(self, num_initial_steps=1):
         observation = super().reset()
