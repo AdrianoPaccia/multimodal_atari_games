@@ -1,4 +1,4 @@
-available_noises: ['nonoise','random_obs', 'gaussian_noise', 'salt_pepper_noise', 'poisson_noise', 'speckle_noise','background_noise','uniform_noise', 'gaussian_blur', 'motion_blur', 'quantization_noise', 'confounders_noise']
+available_noises: ['nonoise','random_obs', 'gaussian_noise', 'salt_pepper_noise', 'poisson_noise', 'speckle_noise','uniform_noise', 'gaussian_blur', 'motion_blur', 'quantization_noise', 'confounders_noise']
 
 gaussian_noise:
   mu: 0
@@ -34,6 +34,6 @@ confounders_noise:
   max_num_patches: 3
 
 random_image:
-  traj_file: 'offline_trajectories/images.npz'
+  traj_file: 'offline_trajectories'
 
 img_path: 'bg_images'

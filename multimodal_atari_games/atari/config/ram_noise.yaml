@@ -15,5 +15,5 @@ blue_noise: {}
 poisson_noise:
   mean: 0.1
 
-random_sound:
-  traj_file: 'offline_trajectories/sounds.npz'
+random_rams:
+  traj_file: 'offline_trajectories'
