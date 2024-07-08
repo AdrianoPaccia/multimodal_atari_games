@@ -1,3 +1,4 @@
 __pycache__/
-offline_trajectories/
+multimodal_atari_games/pendulum/offline_trajectories/
+multimodal_atari_games/atari/offline_trajectories/
 
