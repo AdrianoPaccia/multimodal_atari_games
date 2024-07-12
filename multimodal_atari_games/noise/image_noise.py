@@ -39,6 +39,8 @@ class ImageNoise:
             noisy_image = self.apply_gaussian_blur(img)
         elif noise_type == 'quantization_noise':
             noisy_image = self.apply_quantization_noise(img)
+        elif noise_type == 'background_noise':
+            noisy_image = self.apply_background_noise(img)
         elif noise_type == 'confounders_noise':
             noisy_image = self.apply_confounders_noise(img)
         elif noise_type == 'random_obs':
