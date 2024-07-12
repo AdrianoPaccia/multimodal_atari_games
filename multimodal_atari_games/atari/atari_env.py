@@ -3,17 +3,19 @@ from gym.envs.atari.atari_env import AtariEnv
 import random
 import numpy as np
 from matplotlib import pyplot as plt
-from multimodal_atari_games.multimodal_atari_games.atari.atari_noise import ImageNoise, RamNoise
-class AtariImageRam(
-    AtariEnv):
+from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
+from multimodal_atari_games.multimodal_atari_games.noise.ram_noise import RamNoise
+
+
+class AtariImageRam(AtariEnv):
 
     def __init__(
             self,
             game='pong',
             mode=None,
             difficulty=None,
-            ram_noise_generator=RamNoise([],0.0),
-            image_noise_generator=ImageNoise([], 0.0),
+            ram_noise_generator=RamNoise([],0.0, game='pong'),
+            image_noise_generator=ImageNoise([], 0.0, game='pong'),
     ):
         super().__init__(game=game, mode=mode, difficulty=difficulty, obs_type='ram')
         self.ram_noise_generator=ram_noise_generator
@@ -30,7 +32,7 @@ class AtariImageRam(
         if random.random() < self.image_noise_generator.frequency:
             image_observation = self.image_noise_generator.get_observation(image_observation)
 
-        return (ram_observation, image_observation), reward, done, info, None
+        return (image_observation,ram_observation), reward, done, info, None
 
     def render(self, mode='human'):
         if mode == "human":
@@ -52,9 +54,9 @@ class AtariImageRam(
             raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
 
         for _ in range(num_initial_steps):
-            (ram, image), _, _, _, true_state = self.step(0)
+            (image, ram), _, _, _, true_state = self.step(0)
 
-        return (ram, image),true_state
+        return (image, ram),true_state
 
     def close(self, out=None):
         super().close()

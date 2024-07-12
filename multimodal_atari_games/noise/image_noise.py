@@ -8,12 +8,12 @@ import os
 import yaml
 
 class ImageNoise:
-    def __init__(self, noise_types: list, frequency:float):
+    def __init__(self, noise_types: list, frequency: float, game:str):
         self.noise_types = noise_types
         self.frequency = frequency
-        #self.config = config
-        self.config = load_config(os.path.join(os.path.dirname(__file__), 'config/image_noise.yaml'))
-
+        with open(os.path.join(os.path.dirname(__file__), f'config/{game}/image_noise.yaml'), 'r') as f:
+            self.config = yaml.safe_load(f)
+        self.game = game
         if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")
 
@@ -21,9 +21,8 @@ class ImageNoise:
         noise = random.choice(self.noise_types)
         return self.apply_noise(noise, image)
 
-    def apply_noise(self, noise_type:str, image):
+    def apply_noise(self, noise_type: str, image):
         img = image.copy()
-        params = self.config.get(noise_type, {})
         if noise_type == 'gaussian_noise':
             noisy_image = self.apply_gaussian_noise(img)
         elif noise_type == 'salt_pepper_noise':
@@ -42,8 +41,6 @@ class ImageNoise:
             noisy_image = self.apply_quantization_noise(img)
         elif noise_type == 'confounders_noise':
             noisy_image = self.apply_confounders_noise(img)
-        elif noise_type == 'background_noise':
-            noisy_image = self.apply_background_noise(img)
         elif noise_type == 'random_obs':
             noisy_image = self.get_random_observation()
         elif noise_type == 'nonoise':
@@ -56,13 +53,13 @@ class ImageNoise:
         noise_type = random.choice(list(self.noise_types))
         return self.apply_noise(noise_type, image)
 
-    def apply_all_noises(self,image):
+    def apply_all_noises(self, image):
         noisy_images = []
         for noise_type in self.noise_types:
             noisy_images.append(self.apply_noise(noise_type, image))
         return noisy_images, self.noise_types
-    
-    #all implemented noises
+
+    # all implemented noises
 
     def apply_gaussian_noise(self, image):
         mean = self.config['gaussian_noise']['mu']
@@ -82,7 +79,6 @@ class ImageNoise:
     def apply_poisson_noise(self, image):
         noisy_image = np.random.poisson(image)
         return np.clip(noisy_image, 0, 255).astype(np.uint8)
-
 
     def apply_speckle_noise(self, image):
         noise = np.random.normal(0, 1, size=image.shape)
@@ -131,27 +127,26 @@ class ImageNoise:
             x = random.randint(0, width - side_1)
             y = random.randint(0, height - side_2)
             for i in range(3):
-                noisy_image[y:y+side_1, x:x+side_2,i] = random.uniform(0,225)
+                noisy_image[y:y + side_1, x:x + side_2, i] = random.uniform(0, 225)
         return noisy_image
 
-
     def get_random_observation(self):
-        traj_file = self.config['random_image']['traj_file']
-        images = np.load(os.path.join(os.path.dirname(__file__),traj_file),allow_pickle=True)['images']
-        i_rand = random.randint(0, images.shape[0]-1)
+        images = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}/images.npz'),
+                       allow_pickle=True)['images']
+        i_rand = random.randint(0, images.shape[0] - 1)
         return images[i_rand]
 
     def apply_background_noise(self, original_image):
         img_path = os.path.join(os.path.dirname(__file__), self.config['img_path'])
-        #randomly get an image as background
+        # randomly get an image as background
         image_files = os.listdir(img_path)
         image_files = [file for file in image_files if file.endswith(('.jpg', '.jpeg', '.png'))]
         random_image = random.choice(image_files)
-        bg_image = Image.open(os.path.join(img_path,random_image))
+        bg_image = Image.open(os.path.join(img_path, random_image))
         bg_image = bg_image.resize(original_image.shape[:2])
         background_image = np.array(bg_image)
 
-        #background_image = np.random.randint(0, 256, original_image.shape, dtype=np.uint8)
+        # background_image = np.random.randint(0, 256, original_image.shape, dtype=np.uint8)
         original_image = np.array(original_image.copy()).astype(np.uint8)
 
         if original_image.shape != background_image.shape:
@@ -175,124 +170,19 @@ class ImageNoise:
 
         return composite_image
 
-
     def _motion_blur_kernel(self, size, angle):
         kernel = np.zeros((size, size))
-        kernel[int((size-1)/2), :] = np.sin(np.deg2rad(angle))
-        kernel[int((size-1)/2), int((size-1)/2)] = np.cos(np.deg2rad(angle))
+        kernel[int((size - 1) / 2), :] = np.sin(np.deg2rad(angle))
+        kernel[int((size - 1) / 2), int((size - 1) / 2)] = np.cos(np.deg2rad(angle))
         kernel /= np.sum(kernel)
         return kernel
 
     def render_images(self, image_list, noise_types):
         n = len(image_list)
-        fig, axes = plt.subplots(1, n , figsize=(10, 5))  # Create a figure with two subplots
+        fig, axes = plt.subplots(1, n, figsize=(10, 5))  # Create a figure with two subplots
         for i in range(n):
-            axes[i].imshow(image_list[i])  
-            axes[i].axis('off')  
-            axes[i].set_title(f'{noise_types[i]}')  
+            axes[i].imshow(image_list[i])
+            axes[i].axis('off')
+            axes[i].set_title(f'{noise_types[i]}')
         plt.show()
 
-
-
-class SoundNoise:
-    def __init__(self, noise_types: list, frequency:float):
-        self.noise_types = noise_types
-        self.frequency = frequency
-        #self.config = config
-        self.config = load_config(os.path.join(os.path.dirname(__file__), 'config/ram_noise.yaml'))
-        if not set(noise_types).issubset(set(self.config['available_noises'])):
-            raise ValueError("Noise types not supported")
-
-
-    def get_observation(self, sound):
-        noise = random.choice(self.noise_types)
-        return self.apply_noise(noise, sound)
-
-    def apply_noise(self, noise_type:str, sound):
-        snd = sound.copy()
-        params = self.config.get(noise_type, {})
-        if noise_type == 'gaussian_noise':
-            noisy_sound = self.apply_gaussian_noise(snd)
-        elif noise_type == 'white_noise':
-            noisy_sound = self.apply_white_noise(snd)
-        elif noise_type == 'pink_noise':
-            noisy_sound = self.apply_pink_noise(snd)
-        elif noise_type == 'brownian_noise':
-            noisy_sound = self.apply_brownian_noise(snd)
-        elif noise_type == 'blue_noise':
-            noisy_sound = self.apply_blue_noise(snd)
-        elif noise_type == 'poisson_noise':
-            noisy_sound = self.apply_poisson_noise(snd)
-        elif noise_type == 'random_obs':
-            noisy_sound = self.get_random_observation()
-        elif noise_type == 'nonoise':
-            noisy_sound = snd
-        else:
-            raise ValueError(f"Unsupported noise type: {noise_type}")
-        return noisy_sound
-
-    def apply_random_noise(self, sound):
-        noise_type = random.choice(list(self.config.keys()))
-        return self.apply_noise(noise_type, sound), noise_type
-
-    def apply_all_noises(self,sound):
-        noisy_sounds = []
-        for noise_type in self.noise_types:
-            noisy_sounds.append(self.apply_noise(noise_type, sound))
-        return noisy_sounds, self.noise_types
-
-    #all implemented noises
-    def apply_gaussian_noise(self, sound):
-        mean = self.config['gaussian_noise']['mu']
-        std = self.config['gaussian_noise']['std']
-        noise = np.random.normal(mean, std, len(sound))
-        noisy_sound = sound + noise
-        return noisy_sound
-
-    def apply_white_noise(self, sound):
-        noise = np.random.normal(0, 1, len(sound))
-        noisy_sound = sound + noise
-        return noisy_sound
-
-
-    def apply_pink_noise(self, sound):
-        noise = np.random.normal(0, 1, len(sound))
-        pink_noise = np.convolve(noise, np.ones(10)/10, mode='same')
-        noisy_sound = sound + pink_noise
-        return noisy_sound
-
-    def apply_brownian_noise(self, sound):
-        noise = np.random.normal(0, 1, len(sound))
-        brownian_noise = np.cumsum(noise)
-        noisy_sound = sound + brownian_noise
-        return noisy_sound
-
-    def apply_blue_noise(self, sound):
-        noise = np.random.normal(0, 1, len(sound))
-        blue_noise = np.cumsum(noise)
-        noisy_sound = sound + blue_noise
-        return noisy_sound
-
-    def apply_poisson_noise(self, sound):
-        mean = self.config['poisson_noise']['mean']
-        poisson_noise = np.random.poisson(mean, len(sound))
-        noisy_sound = sound + poisson_noise
-        return noisy_sound
-
-    def get_random_observation(self):
-        traj_file = self.config['random_sound']['traj_file']
-        sounds = np.load(os.path.join(os.path.dirname(__file__), traj_file), allow_pickle=True)['sounds']
-        i_rand = random.randint(0, sounds.shape[0] - 1)
-        return sounds[i_rand]
-
-    def print_sounds(self,sounds,noise_types):
-        n = len(sounds)
-        for sound, noise in zip(sounds,noise_types):
-            print(f'noise: {[round(x,3) for x in sound]}')
-        
-
-
-def load_config(file):
-    with open(file, 'r') as f:
-        config = yaml.safe_load(f)
-    return config

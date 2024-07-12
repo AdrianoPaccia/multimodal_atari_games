@@ -4,7 +4,8 @@ import numpy as np
 import pickle
 from enum import Enum
 from gym.envs.classic_control.pendulum import PendulumEnv
-from multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_noise import ImageNoise, SoundNoise
+from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
+from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
 import random
 try:
     from pysine import sine
@@ -96,8 +97,8 @@ class PendulumSound(PendulumEnv):
             original_frequency=440.,
             sound_vel=20.,
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
-            image_noise_generator=ImageNoise([], 0.0),
-            sound_noise_generator=SoundNoise([], 0.0),
+            image_noise_generator=ImageNoise([], 0.0, game='pendulum'),
+            sound_noise_generator=SoundNoise([], 0.0, game='pendulum'),
             rendering_mode='rgb_array',
             debug=False):
         super().__init__()

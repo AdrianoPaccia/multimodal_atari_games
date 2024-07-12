@@ -14,6 +14,3 @@ blue_noise: {}
 
 poisson_noise:
   mean: 0.1
-
-random_rams:
-  traj_file: 'offline_trajectories'
