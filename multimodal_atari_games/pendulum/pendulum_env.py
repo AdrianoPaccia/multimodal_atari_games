@@ -100,6 +100,7 @@ class PendulumSound(PendulumEnv):
             image_noise_generator=ImageNoise([], 0.0, game='pendulum'),
             sound_noise_generator=SoundNoise([], 0.0, game='pendulum'),
             rendering_mode='rgb_array',
+            max_steps=200,
             debug=False):
         super().__init__()
         self.original_frequency = original_frequency
@@ -109,6 +110,8 @@ class PendulumSound(PendulumEnv):
         self.sound_noise_generator = sound_noise_generator
         self.rendering_mode = rendering_mode
         self._debug = debug
+        self.max_steps = max_steps
+        self.ep_step = 0
 
         #rendering stuff
         self.screen_dim = 100
@@ -120,6 +123,9 @@ class PendulumSound(PendulumEnv):
 
     def step(self, a):
         observation, reward, done, info = super().step(a)
+        self.ep_step += 1
+        done = self.ep_step>self.max_steps
+
 
         x, y, thdot = observation
 
@@ -243,7 +249,7 @@ class PendulumSound(PendulumEnv):
 
     def reset(self, num_initial_steps=1):
         observation = super().reset()
-
+        self.ep_step = 0
         if self._debug:
             self._debug_data = {
                 'pos': [],
