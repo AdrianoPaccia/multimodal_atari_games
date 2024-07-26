@@ -7,9 +7,7 @@ from gym.envs.classic_control.pendulum import PendulumEnv
 from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
 from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
 import random
-import gymnasium as gym
-from gymnasium.wrappers import PixelObservationWrapper
-from os import path
+
 
 
 try:
@@ -88,7 +86,7 @@ class SoundReceiver(object):
             self.pos = np.array([BOTTOM_MARGIN, 0.0])
 
 
-class PendulumSound:
+class PendulumSound(PendulumEnv):
     """
     Frame:
     - points stored as (height, weight)
@@ -107,7 +105,7 @@ class PendulumSound:
             rendering_mode='rgb_array',
             max_steps=200,
             debug=False):
-        self.env = PixelObservationWrapper(gym.make("Pendulum-v1", render_mode="rgb_array"), pixels_only=False)
+        super().__init__()
         self.original_frequency = original_frequency
         self.sound_vel = sound_vel
         self.sound_receivers = sound_receivers
@@ -116,6 +114,7 @@ class PendulumSound:
         self.rendering_mode = rendering_mode
         self._debug = debug
         self.max_steps = max_steps
+        self.ep_step = 0
 
         #rendering stuff
         self.screen_dim = 100
@@ -126,21 +125,16 @@ class PendulumSound:
         self.reset()
 
     def step(self, a):
-        observation, reward, truncated, done, info = self.env.step(a)
+        observation, reward, done, info = super().step(a)
+        self.ep_step += 1
+        done = self.ep_step>self.max_steps
 
-        done = done or truncated
 
-        ## TRUE STATE
-        x, y, thdot = observation['state']
-        self.state = (np.arctan2(y,x), thdot)
+        x, y, thdot = observation
 
-        ## IMAGE OBS (noisy)
-        img_observation = observation['pixels']
-        img_observation = img_observation[100:400,100:400,:] #cropping
-        if random.random() < self.image_noise_generator.frequency:
-            img_observation = self.image_noise_generator.get_observation(img_observation)
+        th = np.arctan2(y,x)
+        true_state = (th, thdot)
 
-        ## SOUND OBS (noisy)
         abs_src_vel = np.abs(thdot * 1)  # v = w . r
         # compute ccw perpendicular vector. if angular velocity is
         # negative, we reverse it. then multiply by absolute velocity
@@ -166,36 +160,98 @@ class PendulumSound:
             for rec in self.sound_receivers
         ]
         snd_observation = list(zip(self._frequencies, self._amplitudes))
+        # get noisy image observation
         if random.random() < self.sound_noise_generator.frequency:
-            snd_observation = np.array(self.sound_noise_generator.get_observation(snd_observation))
+            snd_observation = self.sound_noise_generator.get_observation(snd_observation)
 
-
+        img_observation = self.render_(mode=self.rendering_mode)
+        # get noisy image observation
+        if random.random() < self.image_noise_generator.frequency:
+            img_observation = self.image_noise_generator.get_observation(img_observation)
 
         if self._debug:
             self._debug_data['pos'].append(src_pos)
             self._debug_data['vel'].append(src_vel)
             self._debug_data['sound'].append(self._frequencies)
 
-        return (img_observation, snd_observation), reward, done, info, self.state
+        return (img_observation, snd_observation), reward, done, info, true_state
 
-    def render(self):
-        from gym.envs.classic_control import rendering
-        self.viewer = rendering.Viewer(500,500)
-        self.viewer.set_bounds(-2.2,2.2,-2.2,2.2)
-        rod = rendering.make_capsule(1, .2)
-        rod.set_color(.8, .3, .3)
-        self.pole_transform = rendering.Transform()
-        rod.add_attr(self.pole_transform)
-        self.viewer.add_geom(rod)
-        axle = rendering.make_circle(.05)
-        axle.set_color(0,0,0)
-        self.viewer.add_geom(axle)
-        self.pole_transform.set_rotation(self.state[0] + np.pi/2)
-        return self.viewer.render()
+    def render_(self, mode='human', sound_channel=0, sound_duration=.1):
+        try:
+            import pygame
+            from pygame import gfxdraw
+        except ImportError:
+            raise DependencyNotInstalled(
+                "pygame is not installed, run `pip install gym[classic_control]`"
+            )
+
+        if self.screen is None:
+            pygame.init()
+            if mode == "human":
+                pygame.display.init()
+                self.screen = pygame.display.set_mode(
+                    (self.screen_dim, self.screen_dim)
+                )
+            else:  # mode in "rgb_array"
+                self.screen = pygame.Surface((self.screen_dim, self.screen_dim))
+        if self.clock is None:
+            self.clock = pygame.time.Clock()
+
+        self.surf = pygame.Surface((self.screen_dim, self.screen_dim))
+        self.surf.fill((255, 255, 255))
+
+        bound = 2.2
+        scale = self.screen_dim / (bound * 2)
+        offset = self.screen_dim // 2
+
+        rod_length = 1 * scale
+        rod_width = 0.2 * scale
+        l, r, t, b = 0, rod_length, rod_width / 2, -rod_width / 2
+        coords = [(l, b), (l, t), (r, t), (r, b)]
+        transformed_coords = []
+        for c in coords:
+            c = pygame.math.Vector2(c).rotate_rad(self.state[0] + np.pi / 2)
+            c = (c[0] + offset, c[1] + offset)
+            transformed_coords.append(c)
+        gfxdraw.aapolygon(self.surf, transformed_coords, (204, 77, 77))
+        gfxdraw.filled_polygon(self.surf, transformed_coords, (204, 77, 77))
+
+        gfxdraw.aacircle(self.surf, offset, offset, int(rod_width / 2), (204, 77, 77))
+        gfxdraw.filled_circle(
+            self.surf, offset, offset, int(rod_width / 2), (204, 77, 77)
+        )
+
+        rod_end = (rod_length, 0)
+        rod_end = pygame.math.Vector2(rod_end).rotate_rad(self.state[0] + np.pi / 2)
+        rod_end = (int(rod_end[0] + offset), int(rod_end[1] + offset))
+        gfxdraw.aacircle(
+            self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
+        )
+        gfxdraw.filled_circle(
+            self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
+        )
+
+        # drawing axle
+        gfxdraw.aacircle(self.surf, offset, offset, int(0.05 * scale), (0, 0, 0))
+        gfxdraw.filled_circle(self.surf, offset, offset, int(0.05 * scale), (0, 0, 0))
+
+        self.surf = pygame.transform.flip(self.surf, False, True)
+        self.screen.blit(self.surf, (0, 0))
+        if mode == "human":
+            pygame.event.pump()
+            self.clock.tick(10)
+            pygame.display.flip()
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
+            )
+
+        else:  # mode == "rgb_array":
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
+            )
 
     def reset(self, num_initial_steps=1):
-        observation, _ = self.env.reset()
-
+        observation = super().reset()
         self.ep_step = 0
         if self._debug:
             self._debug_data = {
@@ -216,12 +272,12 @@ class PendulumSound:
             raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
 
         for _ in range(num_initial_steps):
-            (image, sound), _, _, _, true_state = self.step(np.array([0.0]))
+            (observation, sound), _, _, _, true_state = self.step(np.array([0.0]))
 
-        return (image, sound) ,true_state
+        return (observation, sound) ,true_state
 
     def close(self, out=None):
-        self.env.close()
+        super().close()
 
         if out:
             with open(out, 'wb') as filehandle:
