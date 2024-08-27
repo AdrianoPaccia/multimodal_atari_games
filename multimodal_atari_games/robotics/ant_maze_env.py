@@ -13,7 +13,7 @@ class AntMazeImageConfiguration(AntMazeEnv):
 
     def __init__(
             self,
-            render_mode='rgb_array',
+            render_mode=None,
             image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='antmaze'),
             max_episode_steps=300
 

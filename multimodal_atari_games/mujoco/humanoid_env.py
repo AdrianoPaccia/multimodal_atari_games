@@ -10,7 +10,7 @@ class HumanoidImageConfiguration(HumanoidEnv):
 
     def __init__(
             self,
-            render_mode='rgb_array',
+            render_mode=None,
             #ram_noise_generator=RamNoise([],0.0, game='pong'),
             image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='cheetah'),
             max_episode_steps=300
