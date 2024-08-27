@@ -7,8 +7,8 @@ class RamNoise:
     def __init__(self, noise_types: list, frequency: float, game:str):
         self.noise_types = noise_types
         self.frequency = frequency
-        with open(os.path.join(os.path.dirname(__file__), f'config/{game}/ram_noise.yaml'), 'r') as f:
-            self.config = yaml.safe_load(f)
+        with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
+            self.config = yaml.safe_load(f)['rams']
         self.game=game
         if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")

@@ -8,12 +8,17 @@ import os
 import yaml
 
 class ImageNoise:
-    def __init__(self, noise_types: list, frequency: float, game:str):
+    def __init__(self, game:str, noise_types: list=[], frequency: float = 0.0):
         self.noise_types = noise_types
         self.frequency = frequency
-        with open(os.path.join(os.path.dirname(__file__), f'config/{game}/image_noise.yaml'), 'r') as f:
-            self.config = yaml.safe_load(f)
         self.game = game
+
+        with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
+            self.config = yaml.safe_load(f)['images']
+
+        self.random_images = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
+                       allow_pickle=True)['images']
+
         if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")
 
@@ -133,10 +138,8 @@ class ImageNoise:
         return noisy_image
 
     def get_random_observation(self):
-        images = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}/images.npz'),
-                       allow_pickle=True)['images']
-        i_rand = random.randint(0, images.shape[0] - 1)
-        return images[i_rand]
+        i_rand = random.randint(0, self.random_images.shape[0] - 1)
+        return self.random_images[i_rand]
 
     def apply_background_noise(self, original_image):
         img_path = os.path.join(os.path.dirname(__file__), self.config['img_path'])
@@ -157,7 +160,7 @@ class ImageNoise:
         gray = np.dot(original_image[..., :3], [0.2989, 0.5870, 0.1140])
 
         # Apply Otsu's thresholding
-        threshold = np.mean(gray)
+        threshold = np.mean(gray)+0.1
         mask = (gray < threshold).astype(np.uint8) * 255
 
         # Create the masks

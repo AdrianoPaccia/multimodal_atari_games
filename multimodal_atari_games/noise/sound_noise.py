@@ -4,12 +4,15 @@ import os
 import yaml
 
 class SoundNoise:
-    def __init__(self, noise_types: list, frequency:float, game:str):
+    def __init__(self, game:str, noise_types: list=[], frequency:float=0.0):
         self.noise_types = noise_types
         self.frequency = frequency
         self.game = game
-        with open(os.path.join(os.path.dirname(__file__), f'config/{game}/sound_noise.yaml'), 'r') as f:
-            self.config = yaml.safe_load(f)
+        with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
+            self.config = yaml.safe_load(f)['sounds']
+        self.random_sounds = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
+                                     allow_pickle=True)['sounds']
+
         if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")
 
@@ -52,17 +55,23 @@ class SoundNoise:
 
     #all implemented noises
     def apply_gaussian_noise(self, sound):
-        mean = self.config['gaussian_noise']['mu']
-        std = self.config['gaussian_noise']['std']
-        noise = np.random.normal(mean, std, len(sound))
-        noisy_sound = sound + noise
+        amplitude_noise = np.random.normal(
+            self.config['gaussian_noise']['amplitude_mu'],
+            self.config['gaussian_noise']['amplitude_std'],
+        len(sound)
+        )
+        frequency_noise = np.random.normal(
+            self.config['gaussian_noise']['frequency_mu'],
+            self.config['gaussian_noise']['frequency_std'],
+            len(sound)
+        )
+        noisy_sound = [(s[0]+frequency_noise[i], s[1]+amplitude_noise[i]) for i,s in enumerate(sound)]
         return noisy_sound
 
     def apply_white_noise(self, sound):
         noise = np.random.normal(0, 1, len(sound))
         noisy_sound = sound + noise
         return noisy_sound
-
 
     def apply_pink_noise(self, sound):
         noise = np.random.normal(0, 1, len(sound))
@@ -89,6 +98,5 @@ class SoundNoise:
         return noisy_sound
 
     def get_random_observation(self):
-        sounds = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}/sounds.npz'), allow_pickle=True)['sounds']
-        i_rand = random.randint(0, sounds.shape[0] - 1)
-        return sounds[i_rand]
+        i_rand = random.randint(0, self.random_sounds.shape[0] - 1)
+        return self.random_sounds[i_rand]
