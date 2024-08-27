@@ -31,11 +31,14 @@ class CheetahImageConfiguration(HalfCheetahEnv):
         #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
 
         # get image observation
-        image_observation = super().render()[140:480,80:420]
-        if random.random() < self.image_noise_generator.frequency:
-            image_observation = self.image_noise_generator.get_observation(image_observation)
-        self.env_step +=1
-        return (image_observation,config_obs), reward, done, info, config_obs
+        try:
+            image_observation = super().render()[140:480,80:420]
+            if random.random() < self.image_noise_generator.frequency:
+                image_observation = self.image_noise_generator.get_observation(image_observation)
+            self.env_step +=1
+            return (image_observation,config_obs), reward, done, info, config_obs
+        except:
+            return (None,config_obs), reward, done, info, config_obs
 
     def render(self):
         return super().render()

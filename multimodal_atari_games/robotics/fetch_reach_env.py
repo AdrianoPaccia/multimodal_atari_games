@@ -33,14 +33,18 @@ class FetchReachImageConfiguration(MujocoFetchReachEnv):
         #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
 
         # get image observation
-        image_observation = super().render()[50:350, 100:400]
-        #img = Image.fromarray(np.uint8(image_observation))
-        #img = img.resize((200,200))
-        #image_observation = np.array(img)
-        if random.random() < self.image_noise_generator.frequency:
-            image_observation = self.image_noise_generator.get_observation(image_observation)
-        self.env_step+=1
-        return (image_observation,config_obs), reward, done, info, state
+        try:
+            image_observation = super().render()[50:350, 100:400]
+            #img = Image.fromarray(np.uint8(image_observation))
+            #img = img.resize((200,200))
+            #image_observation = np.array(img)
+            if random.random() < self.image_noise_generator.frequency:
+                image_observation = self.image_noise_generator.get_observation(image_observation)
+            self.env_step+=1
+            return (image_observation,config_obs), reward, done, info, state
+        except:
+            return (None,config_obs), reward, done, info, state
+
 
     def render(self):
         return super().render()
