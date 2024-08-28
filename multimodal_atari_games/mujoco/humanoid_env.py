@@ -26,6 +26,8 @@ class HumanoidImageConfiguration(HumanoidEnv):
         if self.env_step >= self.max_episode_steps:
             done = True
 
+        self.env_step += 1
+
         # get noisy config observation
         #if random.random() < self.ram_noise_generator.frequency:
         #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
@@ -35,7 +37,6 @@ class HumanoidImageConfiguration(HumanoidEnv):
             image_observation = super().render()[180:480,100:400]
             if random.random() < self.image_noise_generator.frequency:
                 image_observation = self.image_noise_generator.get_observation(image_observation)
-            self.env_step += 1
             return (image_observation,config_obs), reward, done, info, config_obs
         except:
             return (None,config_obs), reward, done, info, config_obs

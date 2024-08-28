@@ -27,6 +27,8 @@ class AntMazeImageConfiguration(AntMazeEnv):
         if self.env_step>=self.max_episode_steps:
             done=True
 
+        self.env_step+=1
+
         config_obs = obs['observation']
         state = np.concatenate([o for o in obs.values()])
 
@@ -42,7 +44,6 @@ class AntMazeImageConfiguration(AntMazeEnv):
             image_observation = np.array(img)
             if random.random() < self.image_noise_generator.frequency:
                 image_observation = self.image_noise_generator.get_observation(image_observation)
-            self.env_step+=1
             return (image_observation,config_obs), reward, done, info, state
         except:
             return (None,config_obs), reward, done, info, state
