@@ -13,7 +13,7 @@ class FetchReachImageConfiguration(MujocoFetchReachEnv):
 
     def __init__(
             self,
-            render_mode=None,
+            render_mode='rgb_array',
             image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='fetch_reach'),
             max_episode_steps=300
     ):
