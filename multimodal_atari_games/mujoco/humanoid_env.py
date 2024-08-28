@@ -22,7 +22,7 @@ class HumanoidImageConfiguration(HumanoidEnv):
 
     def step(self, a):
         config_obs, reward, done, truncated, info = super().step(a)
-
+        done = done or truncated
         if self.env_step >= self.max_episode_steps:
             done = True
 

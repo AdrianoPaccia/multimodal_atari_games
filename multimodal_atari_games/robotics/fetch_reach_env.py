@@ -17,7 +17,7 @@ class FetchReachImageConfiguration(MujocoFetchReachEnv):
             image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='fetch_reach'),
             max_episode_steps=300
     ):
-        super().__init__( render_mode=render_mode)
+        super().__init__( render_mode=render_mode, reward_type='dense')
         self.image_noise_generator=image_noise_generator
         self.max_episode_steps=max_episode_steps
 
