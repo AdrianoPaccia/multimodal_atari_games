@@ -86,12 +86,14 @@ if __name__ == '__main__':
         (image, conf_obs), _ = env.reset()
         oup.reset()
 
-        while not done and steps < 10:
-            #action = env.action_space.sample()
+        while not done and steps < 1000:
+            # action = env.action_space.sample()
             action = oup.sample()
             (image, conf_obs), reward, done, info, state = env.step(action)
             conf.append(conf_obs)
             images.append(image)
             states.append(state)
-
-            steps+=1
+            print(steps, ': ', reward)
+            # plt.imshow(image)
+            # plt.show()
+            steps += 1
