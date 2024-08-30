@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
 from PIL import Image
 import gymnasium as gym
+from gymnasium.wrappers import PixelObservationWrapper
 
 env_ids = {
     'small':'PointMaze_UMaze-v3',
@@ -28,7 +29,13 @@ class PointMazeImageConfiguration:
         if reward_type not in ['sparse', 'dense']:
             raise ValueError('Reward type must be either "sparse" or "dense"')
 
-        self.env = gym.make(env_ids[map_size],render_mode=render_mode, reward_type=reward_type)
+        if render_mode is None:
+            self.env = gym.make(env_ids[map_size],render_mode=None, reward_type=reward_type)
+        else:
+            self.env = PixelObservationWrapper(
+                gym.make(env_ids[map_size], render_mode="rgb_array", reward_type=reward_type),
+                pixels_only=False)
+
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         self.image_noise_generator=image_noise_generator
@@ -36,29 +43,29 @@ class PointMazeImageConfiguration:
 
     def step(self, a):
         obs, reward, done, info, _ = self.env.step(a)
+
         if self.env_step>=self.max_episode_steps:
             done=True
 
         self.env_step+=1
 
-        config_obs = obs['observation']
-        state = np.concatenate([o for o in obs.values()])
-
-        # get noisy config observation
-        #if random.random() < self.ram_noise_generator.frequency:
-        #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
+        state = np.concatenate([v for k,v in obs.items() if not k =='pixels'])
 
         # get image observation
-        try:
-            image_observation = self.env.render()
+        if self.env.render_mode == 'rgb_array':
+            config_obs = obs['observation']
+            image_observation = obs['pixels']
             img = Image.fromarray(np.uint8(image_observation))
             img = img.resize((200, 200))
             image_observation = np.array(img)
             if random.random() < self.image_noise_generator.frequency:
                 image_observation = self.image_noise_generator.get_observation(image_observation)
+            # get noisy config observation
+            # if random.random() < self.conf_noise_generator.frequency:
+            #    config_obs = self.conf_noise_generator.get_observation(config_obs)
             return (image_observation, config_obs), reward, done, info, state
-        except:
-            return (None,config_obs), reward, done, info, state
+        else:
+            return obs, reward, done, info, state
 
     def render(self):
         return self.env.render()
