@@ -104,6 +104,7 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
 
         config_obs = obs['observation']
         state = np.concatenate([o for o in obs.values()])
+        reward += self.customed_reward(self.state_last, obs)
 
         # get noisy config observation
         #if random.random() < self.ram_noise_generator.frequency:
@@ -112,9 +113,6 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
         # get image observation
         try:
             image_observation = super().render()[50:350, 100:400]
-            #img = Image.fromarray(np.uint8(image_observation))
-            #img = img.resize((200,200))
-            #image_observation = np.array(img)
             if random.random() < self.image_noise_generator.frequency:
                 image_observation = self.image_noise_generator.get_observation(image_observation)
             return (image_observation,config_obs), reward, done, info, state
@@ -126,27 +124,28 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
         return super().render()
 
 
-    def reset(self, num_initial_steps=1):
-        obs, _ = super().reset()
+    def reset(self):
+        self.state_last, _ = super().reset()
         self.env_step=0
-
-        if type(num_initial_steps) is list or type(num_initial_steps) is tuple:
-            assert len(num_initial_steps) == 2
-            low = num_initial_steps[0]
-            high = num_initial_steps[1]
-
-            num_initial_steps = np.random.randint(low, high)
-        elif type(num_initial_steps) is int:
-            assert num_initial_steps >= 1
-        else:
-            raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
-
-        for _ in range(num_initial_steps):
-            obs, _, _, _, true_state = self.step([0.]*4)
+        obs, _, _, _, true_state = self.step([0.]*4)
         return obs, true_state
 
     def close(self):
         super().close()
+
+    def customed_reward(self, obs, next_obs):
+        reward = -(np.linalg.norm(next_obs['desired_goal'][:3] - next_obs['achieved_goal'][:3]) - \
+          np.linalg.norm(obs['desired_goal'][:3] - obs['achieved_goal'][:3]))
+        p_goal_old = obs['desired_goal'][:3]
+        p_cube_old = obs['achieved_goal'][:3]
+        pushing_point_old = p_cube_old + ((p_cube_old - p_goal_old) / np.linalg.norm(p_cube_old - p_goal_old)) * 0.06
+        p_goal = next_obs['desired_goal'][:3]
+        p_cube = next_obs['achieved_goal'][:3]
+        pushing_point = p_cube + ((p_cube - p_goal) / np.linalg.norm(p_cube - p_goal)) * 0.06
+        reward += - 0.1 * (np.linalg.norm(pushing_point - next_obs['observation'][:3]) - np.linalg.norm(
+        pushing_point_old - obs['observation'][:3]))
+        return reward
+
 
 
 if __name__ == '__main__':
