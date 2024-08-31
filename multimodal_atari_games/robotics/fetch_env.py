@@ -1,3 +1,4 @@
+import copy
 import os
 import random
 import numpy as np
@@ -104,9 +105,7 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
 
         config_obs = obs['observation']
         state = np.concatenate([o for o in obs.values()])
-        reward += self.customed_reward(self.state_last, obs)
-
-        # get noisy config observation
+        reward += self.customed_reward(self.state_last, obs)        # get noisy config observation
         #if random.random() < self.ram_noise_generator.frequency:
         #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
 
