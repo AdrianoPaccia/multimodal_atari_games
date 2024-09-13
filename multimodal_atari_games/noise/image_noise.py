@@ -8,16 +8,18 @@ import os
 import yaml
 
 class ImageNoise:
-    def __init__(self, game:str, noise_types: list=[], frequency: float = 0.0):
+    def __init__(self, game:str, noise_types: list=[]):
         self.noise_types = noise_types
-        self.frequency = frequency
         self.game = game
 
         with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
             self.config = yaml.safe_load(f)['images']
 
-        self.random_images = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
+        try:
+            self.random_images = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
                        allow_pickle=True)['images']
+        except:
+             Warning('No offline trajectories stored!')
 
         if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")

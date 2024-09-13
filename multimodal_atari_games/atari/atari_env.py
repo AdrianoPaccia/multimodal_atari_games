@@ -14,8 +14,8 @@ class AtariImageRam(AtariEnv):
             game='pong',
             mode=None,
             difficulty=None,
-            ram_noise_generator=RamNoise([],0.0, game='pong'),
-            image_noise_generator=ImageNoise([], 0.0, game='pong'),
+            ram_noise_generator=RamNoise(noise_types=[],game='pong'),
+            image_noise_generator=ImageNoise(noise_types=[], game='pong'),
     ):
         super().__init__(game=game, mode=mode, difficulty=difficulty, obs_type='ram')
         self.ram_noise_generator=ram_noise_generator
@@ -68,8 +68,8 @@ if __name__ == '__main__':
     env = AtariImageRam(
         game=game,
         difficulty=None,
-        image_noise_generator=ImageNoise(['random_obs', 'salt_pepper_noise'], 1.0),
-        ram_noise_generator=RamNoise(['random_obs'], 1.0)
+        image_noise_generator=ImageNoise(['random_obs', 'salt_pepper_noise'],  noise_types=1.0),
+        ram_noise_generator=RamNoise(['random_obs'], noise_types=1.0)
     )
     rams = []
     images = []

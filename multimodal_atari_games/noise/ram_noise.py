@@ -4,9 +4,8 @@ import os
 import yaml
 
 class RamNoise:
-    def __init__(self, noise_types: list, frequency: float, game:str):
+    def __init__(self,  game:str, noise_types: list):
         self.noise_types = noise_types
-        self.frequency = frequency
         with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
             self.config = yaml.safe_load(f)['rams']
         self.game=game

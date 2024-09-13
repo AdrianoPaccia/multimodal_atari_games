@@ -18,7 +18,7 @@ class AntMazeImageConfiguration:
     def __init__(
             self,
             render_mode='rgb_array',
-            image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='antmaze'),
+            image_noise_generator=ImageNoise(noise_types=[], game='antmaze'),
             max_episode_steps=300,
             map_size='medium',
             reward_type='dense'
@@ -95,7 +95,7 @@ class AntMazeImageConfiguration_(AntMazeEnv):
     def __init__(
             self,
             render_mode='rgb_array',
-            image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='antmaze'),
+            image_noise_generator=ImageNoise(noise_types=[], game='antmaze'),
             max_episode_steps=300
 
     ):

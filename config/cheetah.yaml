@@ -1,0 +1,57 @@
+images:
+  available_noises: [ 'nonoise','random_obs', 'gaussian_noise', 'salt_pepper_noise', 'poisson_noise', 'speckle_noise','uniform_noise', 'gaussian_blur', 'motion_blur', 'quantization_noise', 'confounders_noise' ]
+
+  gaussian_noise:
+    mu: 0
+    std: 25
+
+  salt_pepper_noise:
+    ratio: 0.005
+
+  poisson_noise:
+    lam: 10
+
+  speckle_noise:
+    mean: 0
+    std: 0.1
+
+  uniform_noise:
+    min_val: 0
+    max_val: 50
+
+  gaussian_blur:
+    sigma: 1
+
+  motion_blur:
+    kernel_size: 5
+    angle: 45
+
+  quantization_noise:
+    bits: 16
+
+  confounders_noise:
+    max_size: 20
+    min_size: 10
+    max_num_patches: 3
+
+  img_path: 'bg_images'
+
+
+
+conf:
+  available_noises: [ 'nonoise' ]
+
+  gaussian_noise:
+    mu: 0
+    std: 0.1
+
+  white_noise: { }
+
+  pink_noise: { }
+
+  brownian_noise: { }
+
+  blue_noise: { }
+
+  poisson_noise:
+    mean: 0.1
