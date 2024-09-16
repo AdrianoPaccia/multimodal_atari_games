@@ -1,5 +1,6 @@
 import copy
 
+import torchvision.transforms
 from gym import spaces
 import numpy as np
 import pickle
@@ -8,7 +9,8 @@ from gym.envs.classic_control.pendulum import PendulumEnv
 from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
 from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
 import random
-import cv2
+#import cv2
+import PIL.Image as Image
 import torch
 
 try:
@@ -119,6 +121,7 @@ class PendulumSound(PendulumEnv):
         self.max_steps = max_steps
         self.ep_step = 0
         self.device = torch.device('cpu')
+        self.img_trans = torchvision.transforms.Resize((100,100))
 
         #spaces
         self.obs_modes = ['state','rgb', 'sound']
@@ -209,7 +212,9 @@ class PendulumSound(PendulumEnv):
             self._debug_data['vel'].append(src_vel)
             self._debug_data['sound'].append(self._frequencies)
 
-        img_observation = cv2.resize(img_observation, (100, 100), interpolation=cv2.INTER_AREA)
+        rgb = Image.fromarray(img_observation)
+        img_observation = np.array(rgb.resize((100,100)))
+
         obs = dict(
             state=torch.tensor(observation).unsqueeze(0),
             rgb=torch.from_numpy(img_observation).unsqueeze(0),
