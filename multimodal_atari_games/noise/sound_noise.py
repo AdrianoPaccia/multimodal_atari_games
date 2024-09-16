@@ -10,8 +10,8 @@ class SoundNoise:
         self.game = game
         with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
             self.config = yaml.safe_load(f)['sounds']
-        self.random_sounds = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
-                                     allow_pickle=True)['sounds']
+        #self.random_sounds = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
+        #                             allow_pickle=True)['sounds']
 
         if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")

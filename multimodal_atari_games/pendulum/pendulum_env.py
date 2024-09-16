@@ -1,5 +1,6 @@
+import copy
 
-
+from gym import spaces
 import numpy as np
 import pickle
 from enum import Enum
@@ -8,7 +9,7 @@ from multimodal_atari_games.multimodal_atari_games.noise.image_noise import Imag
 from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
 import random
 import cv2
-
+import torch
 
 try:
     from pysine import sine
@@ -100,8 +101,8 @@ class PendulumSound(PendulumEnv):
             original_frequency=440.,
             sound_vel=20.,
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
-            image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='pendulum'),
-            sound_noise_generator=SoundNoise(noise_types=[], frequency=0.0, game='pendulum'),
+            image_noise_generator=ImageNoise(noise_types=[], game='pendulum'),
+            sound_noise_generator=SoundNoise(noise_types=[], game='pendulum'),
             noise_frequency=0.0,
             rendering_mode='rgb_array',
             max_steps=200,
@@ -117,6 +118,21 @@ class PendulumSound(PendulumEnv):
         self._debug = debug
         self.max_steps = max_steps
         self.ep_step = 0
+        self.device = torch.device('cpu')
+
+        #spaces
+        self.obs_modes = ['state','rgb', 'sound']
+        img_shape = (100, 100, 3)
+        sound_shape = (6,) #(3, 2)
+        state_shape = (3,)
+        self.single_state_shape = self.observation_space.shape
+        self.observation_space_mm = spaces.Tuple([
+            spaces.Box(low=-8, high=8, shape=state_shape), #state
+            spaces.Box(low=0, high=255, shape=img_shape), #image
+            spaces.Box(low=-np.inf, high=np.inf, shape=sound_shape) #sound
+        ])
+        self.single_observation_space_mm = self.observation_space_mm
+        self.single_action_space = copy.deepcopy(self.action_space)
 
         #rendering stuff
         self.screen_dim = 500
@@ -129,12 +145,18 @@ class PendulumSound(PendulumEnv):
     def step(self, a):
         observation, reward, done, info = super().step(a)
         done = self.ep_step > self.max_steps
+        self.ep_step += 1
+        return observation, reward, done, info
 
+    def step_mm(self, a):
+
+        if torch.is_tensor(a):
+            a = a.numpy().reshape(-1)
+        observation, reward, done, info = self.step(a)
 
         x, y, thdot = observation
 
         th = np.arctan2(y,x)
-        true_state = (th, thdot)
 
         abs_src_vel = np.abs(thdot * 1)  # v = w . r
         # compute ccw perpendicular vector. if angular velocity is
@@ -142,6 +164,7 @@ class PendulumSound(PendulumEnv):
         src_vel = np.array([-y, x])
         src_vel = (
             src_vel / np.linalg.norm(src_vel)) * np.sign(thdot) * abs_src_vel
+
         src_pos = np.array([x, y])
 
         self._frequencies = [
@@ -185,11 +208,15 @@ class PendulumSound(PendulumEnv):
             self._debug_data['pos'].append(src_pos)
             self._debug_data['vel'].append(src_vel)
             self._debug_data['sound'].append(self._frequencies)
-        self.ep_step += 1
 
         img_observation = cv2.resize(img_observation, (100, 100), interpolation=cv2.INTER_AREA)
-
-        return (img_observation, snd_observation), reward, done, info, true_state
+        obs = dict(
+            state=torch.tensor(observation).unsqueeze(0),
+            rgb=torch.from_numpy(img_observation).unsqueeze(0),
+            sound=torch.tensor(snd_observation).unsqueeze(0))
+        reward = torch.tensor(reward).unsqueeze(0)
+        done = torch.tensor(done).unsqueeze(0)
+        return obs, reward, done, done, info
 
 
     def render_(self, mode='human', sound_channel=0, sound_duration=.1):
@@ -266,8 +293,9 @@ class PendulumSound(PendulumEnv):
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
 
-    def reset(self, num_initial_steps=1):
-        observation = super().reset()
+    def reset_mm(self, seed=0, num_initial_steps=1):
+        self.seed(seed)
+        observation = self.reset()
         self.ep_step = 0
         if self._debug:
             self._debug_data = {
@@ -288,9 +316,9 @@ class PendulumSound(PendulumEnv):
             raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
 
         for _ in range(num_initial_steps):
-            (observation, sound), _, _, _, true_state = self.step(np.array([0.0]))
+            obs, _, _, _, info = self.step_mm(np.array([0.0]))
 
-        return (observation, sound) ,true_state
+        return obs, info
 
     def close(self, out=None):
         super().close()
@@ -301,6 +329,9 @@ class PendulumSound(PendulumEnv):
                     self._debug_data,
                     filehandle,
                     protocol=pickle.HIGHEST_PROTOCOL)
+
+    def get_state(self):
+        return torch.from_numpy(self._get_obs()).unsqueeze(0)
 
 
 def main():
