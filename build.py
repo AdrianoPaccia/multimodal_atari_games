@@ -71,8 +71,8 @@ def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_epi
     if game=='cheetah':
         from multimodal_atari_games.multimodal_atari_games.mujoco.cheetah_env import CheetahImageConfiguration
         return CheetahImageConfiguration(
-            render_mode='rgb_array' if render else None,
-            image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types, frequency=noise_freq),
+            render_mode='rgb_array',# if render else None,
+            image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types),
             max_episode_steps=max_episode_steps,
             #ram_noise_generator=RamNoise(['random_obs'], 1.0),
         )
@@ -80,7 +80,7 @@ def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_epi
         from multimodal_atari_games.multimodal_atari_games.mujoco.humanoid_env import HumanoidImageConfiguration
         return HumanoidImageConfiguration(
             render_mode='rgb_array' if render else None,
-            image_noise_generator=ImageNoise(game='humanoid', noise_types=noise_types, frequency=noise_freq),
+            image_noise_generator=ImageNoise(game='humanoid', noise_types=noise_types),
             max_episode_steps=max_episode_steps,
             # ram_noise_generator=RamNoise(['random_obs'], 1.0)
         )
@@ -96,7 +96,7 @@ def build_env_robotics(game, noise_freq=0.0, noise_types:list=['nonoise'], max_e
         from multimodal_atari_games.multimodal_atari_games.robotics.fetch_env import FetchReachImageConfiguration
         return FetchReachImageConfiguration(
             render_mode='rgb_array' if render else None,
-            image_noise_generator=ImageNoise(game='fetch_reach', noise_types=noise_types, frequency=noise_freq),
+            image_noise_generator=ImageNoise(game='fetch_reach', noise_types=noise_types),
             max_episode_steps=max_episode_steps,
             #ram_noise_generator=RamNoise(['random_obs'], 1.0),
             reward_type=kwargs['reward_type']
@@ -105,7 +105,7 @@ def build_env_robotics(game, noise_freq=0.0, noise_types:list=['nonoise'], max_e
         from multimodal_atari_games.multimodal_atari_games.robotics.fetch_env import FetchPushImageConfiguration
         return FetchPushImageConfiguration(
             render_mode='rgb_array' if render else None,
-            image_noise_generator=ImageNoise(game='fetch_push', noise_types=noise_types, frequency=noise_freq),
+            image_noise_generator=ImageNoise(game='fetch_push', noise_types=noise_types),
             max_episode_steps=max_episode_steps,
             #ram_noise_generator=RamNoise(['random_obs'], 1.0),
             reward_type=kwargs['reward_type']
