@@ -149,6 +149,7 @@ class PendulumSound(PendulumEnv):
         observation, reward, done, info = super().step(a)
         done = self.ep_step > self.max_steps
         self.ep_step += 1
+        self.ep_reward += reward
         return observation, reward, done, info
 
     def step_mm(self, a):
@@ -221,6 +222,22 @@ class PendulumSound(PendulumEnv):
             sound=torch.tensor(snd_observation).unsqueeze(0))
         reward = torch.tensor(reward).unsqueeze(0)
         done = torch.tensor(done).unsqueeze(0)
+        info = {
+            'elapsed_steps': torch.tensor([self.ep_step]),
+            'episode': {'r': torch.tensor([self.ep_reward])}
+        }
+
+        if done:
+            info['final_info'] = {
+                'elapsed_steps': torch.tensor([self.ep_step]),
+                'episode': {
+                    'r': torch.tensor([self.ep_reward]),
+                    '_r':torch.tensor([True])
+                },
+            }
+            info['_final_info'] = torch.tensor([True])
+            info['final_observation'] = obs
+
         return obs, reward, done, done, info
 
 
@@ -300,8 +317,10 @@ class PendulumSound(PendulumEnv):
 
     def reset_mm(self, seed=0, num_initial_steps=1):
         self.seed(seed)
-        observation = self.reset()
+        self.reset()
         self.ep_step = 0
+        self.ep_reward = 0.
+
         if self._debug:
             self._debug_data = {
                 'pos': [],
