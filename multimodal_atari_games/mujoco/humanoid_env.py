@@ -15,7 +15,7 @@ class HumanoidImageConfiguration(HumanoidEnv):
             self,
             render_mode='rgb_array',
             #ram_noise_generator=RamNoise([],0.0, game='pong'),
-            image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='cheetah'),
+            image_noise_generator=ImageNoise(noise_types=[], game='humanoid'),
             max_episode_steps=300,
             noise_frequency=0.0
     ):

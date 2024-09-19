@@ -87,7 +87,7 @@ def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_epi
             noise_frequency=noise_freq
             # ram_noise_generator=RamNoise(['random_obs'], 1.0),
         )
-    
+
     elif game=='humanoid':
         from multimodal_atari_games.multimodal_atari_games.mujoco.humanoid_env import HumanoidImageConfiguration
         '''
