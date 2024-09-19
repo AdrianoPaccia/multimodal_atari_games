@@ -19,6 +19,7 @@ class CheetahImageConfiguration(HalfCheetahEnv):
             noise_frequency=0.0
     ):
         super().__init__(render_mode=render_mode)
+        print('RENDER MODEE: ',render_mode)
         #self.ram_noise_generator=ram_noise_generator
         self.image_noise_generator=image_noise_generator
         self.max_episode_steps = max_episode_steps
