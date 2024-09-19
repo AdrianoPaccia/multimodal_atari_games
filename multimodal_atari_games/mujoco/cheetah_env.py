@@ -24,7 +24,8 @@ class CheetahImageConfiguration(HalfCheetahEnv):
         self.image_noise_generator=image_noise_generator
         self.max_episode_steps = max_episode_steps
         self.noise_frequency = noise_frequency
-
+        self.ep_step = 0
+        self.ep_reward = 0.
         self.device = torch.device('cpu')
         self.obs_modes = ['state','rgb']
         state_shape = (17,)
@@ -53,9 +54,9 @@ class CheetahImageConfiguration(HalfCheetahEnv):
 
         ram_observation, reward, done, truncated, info = self.step(a)
 
-        self.env_step += 1
+        self.ep_step += 1
 
-        if self.env_step >= self.max_episode_steps:
+        if self.ep_step >= self.max_episode_steps:
             truncated = True
 
         reward = torch.tensor(reward).unsqueeze(0)
