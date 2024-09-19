@@ -63,6 +63,7 @@ def build_env_atari(game, noise_freq=0.0, noise_types:list=['nonoise'], render=F
         difficulty=None,
         image_noise_generator=ImageNoise(noise_types=noise_types, game=game),
         ram_noise_generator=RamNoise(noise_types=noise_types, game=game),
+        noise_frequency=noise_freq
     )
 
 def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_episode_steps=1000, render=False, **kwargs):
@@ -70,20 +71,42 @@ def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_epi
 
     if game=='cheetah':
         from multimodal_atari_games.multimodal_atari_games.mujoco.cheetah_env import CheetahImageConfiguration
-        return CheetahImageConfiguration(
-            render_mode='rgb_array',# if render else None,
-            image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types),
-            max_episode_steps=max_episode_steps,
-            #ram_noise_generator=RamNoise(['random_obs'], 1.0),
-        )
+        try:
+            return CheetahImageConfiguration(
+                render_mode='rgb_array',
+                image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types),
+                max_episode_steps=max_episode_steps,
+                noise_frequency=noise_freq
+                #ram_noise_generator=RamNoise(['random_obs'], 1.0),
+            )
+        except:
+            Warning('Exception caused byy the renderization. Creating the environment with only states.')
+            return CheetahImageConfiguration(
+                render_mode=None,
+                image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types),
+                max_episode_steps=max_episode_steps,
+                noise_frequency=noise_freq
+                # ram_noise_generator=RamNoise(['random_obs'], 1.0),
+            )
     elif game=='humanoid':
         from multimodal_atari_games.multimodal_atari_games.mujoco.humanoid_env import HumanoidImageConfiguration
-        return HumanoidImageConfiguration(
-            render_mode='rgb_array' if render else None,
-            image_noise_generator=ImageNoise(game='humanoid', noise_types=noise_types),
-            max_episode_steps=max_episode_steps,
-            # ram_noise_generator=RamNoise(['random_obs'], 1.0)
-        )
+        try:
+            return HumanoidImageConfiguration(
+                render_mode='rgb_array',
+                image_noise_generator=ImageNoise(game='humanoid', noise_types=noise_types),
+                max_episode_steps=max_episode_steps,
+                noise_frequency=noise_freq
+                # ram_noise_generator=RamNoise(['random_obs'], 1.0)
+            )
+        except:
+            Warning('Exception caused byy the renderization. Creating the environment with only states.')
+            return HumanoidImageConfiguration(
+                render_mode=None,
+                image_noise_generator=ImageNoise(game='humanoid', noise_types=noise_types),
+                max_episode_steps=max_episode_steps,
+                noise_frequency=noise_freq
+                # ram_noise_generator=RamNoise(['random_obs'], 1.0)
+            )
     else:
         raise ValueError(f'{game} is not a valid game (cheetah, humanoid)!')
 

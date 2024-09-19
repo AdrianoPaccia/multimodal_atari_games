@@ -48,31 +48,17 @@ class HumanoidImageConfiguration(HumanoidEnv):
         return observation, reward, done, truncated, info
 
     def step_mm(self, a):
+
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
+
         ram_observation, reward, done, truncated, info = self.step(a)
 
-        done = done or truncated
-        if self.env_step >= self.max_episode_steps:
-            done = True
-
         self.env_step += 1
-        img_observation = super().render()[180:480, 100:400]
-        if random.random() < self.noise_frequency:
-            img_observation = self.image_noise_generator.get_observation(img_observation)
 
-        rgb = Image.fromarray(img_observation)
-        img_observation = np.array(rgb.resize((100, 100)))
+        if self.env_step >= self.max_episode_steps:
+            truncated = True
 
-
-        # get noisy config observation
-        #if random.random() < self.ram_noise_generator.frequency:
-        #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
-
-        obs = dict(
-            state=torch.tensor(ram_observation).unsqueeze(0),
-            rgb=torch.from_numpy(img_observation).unsqueeze(0)
-        )
         reward = torch.tensor(reward).unsqueeze(0)
         done = torch.tensor(done).unsqueeze(0)
         truncated = torch.tensor(truncated).unsqueeze(0)
@@ -81,6 +67,27 @@ class HumanoidImageConfiguration(HumanoidEnv):
             'elapsed_steps': torch.tensor([self.ep_step]),
             'episode': {'r': torch.tensor([self.ep_reward])}
         }
+
+        if self.render_mode != 'rgb_array':
+            obs = dict(state=torch.tensor(ram_observation).unsqueeze(0))
+
+        else:
+            img_observation = super().render()[180:480, 100:400]
+            if random.random() < self.noise_frequency:
+                img_observation = self.image_noise_generator.get_observation(img_observation)
+                # if bool(random.getrandbits(1)):
+                #    img_observation = self.image_noise_generator.get_observation(img_observation)
+                # else:
+                #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
+
+            rgb = Image.fromarray(img_observation)
+            img_observation = np.array(rgb.resize((100, 100)))
+
+            obs = dict(
+                state=torch.tensor(ram_observation).unsqueeze(0),
+                rgb=torch.from_numpy(img_observation).unsqueeze(0)
+            )
+
         if done or truncated:
             info['final_info'] = {
                 'elapsed_steps': torch.tensor([self.ep_step]),

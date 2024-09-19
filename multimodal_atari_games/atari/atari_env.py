@@ -16,21 +16,23 @@ class AtariImageRam(AtariEnv):
             difficulty=None,
             ram_noise_generator=RamNoise(noise_types=[],game='pong'),
             image_noise_generator=ImageNoise(noise_types=[], game='pong'),
+            noise_frequency=0.0
     ):
         super().__init__(game=game, mode=mode, difficulty=difficulty, obs_type='ram')
         self.ram_noise_generator=ram_noise_generator
         self.image_noise_generator=image_noise_generator
+        self.noise_frequency= noise_frequency
     def step(self, a):
         ram_observation, reward, done, info = super().step(a)
 
-        # get noisy ram observation
-        if random.random() < self.ram_noise_generator.frequency:
-            ram_observation = self.ram_noise_generator.get_observation(ram_observation)
-
-        # get image observation
         image_observation = super().render(mode='rgb_array')
-        if random.random() < self.image_noise_generator.frequency:
-            image_observation = self.image_noise_generator.get_observation(image_observation)
+        if random.random() < self.noise_frequency:
+            if bool(random.getrandbits(1)):
+                # get image observation
+                image_observation = self.image_noise_generator.get_observation(image_observation)
+            else:
+                # get noisy ram observation
+                ram_observation = self.ram_noise_generator.get_observation(ram_observation)
 
         return (image_observation,ram_observation), reward, done, info, None
 

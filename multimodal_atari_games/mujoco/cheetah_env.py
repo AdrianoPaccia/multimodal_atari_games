@@ -19,6 +19,7 @@ class CheetahImageConfiguration(HalfCheetahEnv):
             noise_frequency=0.0
     ):
         super().__init__(render_mode=render_mode)
+        self.render_mode = render_mode
         #self.ram_noise_generator=ram_noise_generator
         self.image_noise_generator=image_noise_generator
         self.max_episode_steps = max_episode_steps
@@ -45,28 +46,18 @@ class CheetahImageConfiguration(HalfCheetahEnv):
         self.ep_reward += reward
         return observation, reward, done, truncated, info
 
-
     def step_mm(self, a):
+
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
+
         ram_observation, reward, done, truncated, info = self.step(a)
 
+        self.env_step += 1
 
-        # get noisy config observation
-        #if random.random() < self.ram_noise_generator.frequency:
-        #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
+        if self.env_step >= self.max_episode_steps:
+            truncated = True
 
-        # get image observation
-        img_observation = super().render()[140:480,80:420]
-        if random.random() < self.noise_frequency:
-            img_observation = self.image_noise_generator.get_observation(img_observation)
-        rgb = Image.fromarray(img_observation)
-        img_observation = np.array(rgb.resize((100, 100)))
-
-        obs = dict(
-            state=torch.tensor(ram_observation).unsqueeze(0),
-            rgb=torch.from_numpy(img_observation).unsqueeze(0)
-        )
         reward = torch.tensor(reward).unsqueeze(0)
         done = torch.tensor(done).unsqueeze(0)
         truncated = torch.tensor(truncated).unsqueeze(0)
@@ -75,19 +66,39 @@ class CheetahImageConfiguration(HalfCheetahEnv):
             'elapsed_steps': torch.tensor([self.ep_step]),
             'episode': {'r': torch.tensor([self.ep_reward])}
         }
+
+        if self.render_mode != 'rgb_array':
+            obs = dict(state=torch.tensor(ram_observation).unsqueeze(0))
+
+        else:
+            img_observation = super().render()[180:480, 100:400]
+            if random.random() < self.noise_frequency:
+                img_observation = self.image_noise_generator.get_observation(img_observation)
+                # if bool(random.getrandbits(1)):
+                #    img_observation = self.image_noise_generator.get_observation(img_observation)
+                # else:
+                #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
+
+            rgb = Image.fromarray(img_observation)
+            img_observation = np.array(rgb.resize((100, 100)))
+
+            obs = dict(
+                state=torch.tensor(ram_observation).unsqueeze(0),
+                rgb=torch.from_numpy(img_observation).unsqueeze(0)
+            )
+
         if done or truncated:
             info['final_info'] = {
                 'elapsed_steps': torch.tensor([self.ep_step]),
                 'episode': {
                     'r': torch.tensor([self.ep_reward]),
-                    '_r':torch.tensor([True])
+                    '_r': torch.tensor([True])
                 },
             }
             info['_final_info'] = torch.tensor([True])
             info['final_observation'] = obs
 
         return obs, reward, done, truncated, info
-
 
     def render(self):
         return super().render()
