@@ -104,7 +104,7 @@ class HumanoidImageConfiguration(HumanoidEnv):
         return super().render()
 
 
-    def reset_mm(self, num_initial_steps=1):
+    def reset_mm(self, seed=0, num_initial_steps=1):
         #self.seed(seed)
         self.reset()
         self.ep_step = 0
