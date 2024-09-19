@@ -68,10 +68,7 @@ class CheetahImageConfiguration(HalfCheetahEnv):
             'episode': {'r': torch.tensor([self.ep_reward])}
         }
 
-        if self.render_mode != 'rgb_array':
-            obs = dict(state=torch.tensor(ram_observation).unsqueeze(0))
-
-        else:
+        try:
             img_observation = super().render()[180:480, 100:400]
             if random.random() < self.noise_frequency:
                 img_observation = self.image_noise_generator.get_observation(img_observation)
@@ -87,6 +84,8 @@ class CheetahImageConfiguration(HalfCheetahEnv):
                 state=torch.tensor(ram_observation).unsqueeze(0),
                 rgb=torch.from_numpy(img_observation).unsqueeze(0)
             )
+        except:
+            obs = dict(state=torch.tensor(ram_observation).unsqueeze(0))
 
         if done or truncated:
             info['final_info'] = {
