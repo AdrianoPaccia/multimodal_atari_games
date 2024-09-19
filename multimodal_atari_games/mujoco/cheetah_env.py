@@ -39,8 +39,6 @@ class CheetahImageConfiguration(HalfCheetahEnv):
         self.single_observation_space_mm = self.observation_space_mm
         self.single_action_space = copy.deepcopy(self.action_space)
 
-        self.reset_mm()
-        print('RENDER MODEE: ',render_mode)
 
 
     def step(self, a):
