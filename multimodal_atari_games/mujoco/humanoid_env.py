@@ -27,7 +27,7 @@ class HumanoidImageConfiguration(HumanoidEnv):
         self.ep_step, self.ep_reward = 0, 0.
         self.device = torch.device('cpu')
         self.obs_modes = ['state', 'rgb']
-        state_shape = (17,)
+        state_shape = (376,)
         img_shape = (100, 100, 3)
         self.single_state_shape = self.observation_space.shape
 
