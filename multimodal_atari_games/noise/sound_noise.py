@@ -43,18 +43,18 @@ class SoundNoise:
             raise ValueError(f"Unsupported noise type: {noise_type}")
         return noisy_sound
 
-    def apply_random_noise(self, sound):
+    def apply_random_noise(self, sound:np.ndarray):
         noise_type = random.choice(list(self.config.keys()))
         return self.apply_noise(noise_type, sound), noise_type
 
-    def apply_all_noises(self,sound):
+    def apply_all_noises(self, sound: np.ndarray):
         noisy_sounds = []
         for noise_type in self.noise_types:
             noisy_sounds.append(self.apply_noise(noise_type, sound))
         return noisy_sounds, self.noise_types
 
     #all implemented noises
-    def apply_gaussian_noise(self, sound):
+    def apply_gaussian_noise(self, sound: np.ndarray):
         amplitude_noise = np.random.normal(
             self.config['gaussian_noise']['amplitude_mu'],
             self.config['gaussian_noise']['amplitude_std'],
@@ -68,30 +68,30 @@ class SoundNoise:
         noisy_sound = [(s[0]+frequency_noise[i], s[1]+amplitude_noise[i]) for i,s in enumerate(sound)]
         return noisy_sound
 
-    def apply_white_noise(self, sound):
+    def apply_white_noise(self, sound: np.ndarray):
         noise = np.random.normal(0, 1, len(sound))
         noisy_sound = sound + noise
         return noisy_sound
 
-    def apply_pink_noise(self, sound):
+    def apply_pink_noise(self, sound: np.ndarray):
         noise = np.random.normal(0, 1, len(sound))
         pink_noise = np.convolve(noise, np.ones(10)/10, mode='same')
         noisy_sound = sound + pink_noise
         return noisy_sound
 
-    def apply_brownian_noise(self, sound):
+    def apply_brownian_noise(self, sound: np.ndarray):
         noise = np.random.normal(0, 1, len(sound))
         brownian_noise = np.cumsum(noise)
         noisy_sound = sound + brownian_noise
         return noisy_sound
 
-    def apply_blue_noise(self, sound):
+    def apply_blue_noise(self, sound: np.ndarray):
         noise = np.random.normal(0, 1, len(sound))
         blue_noise = np.cumsum(noise)
         noisy_sound = sound + blue_noise
         return noisy_sound
 
-    def apply_poisson_noise(self, sound):
+    def apply_poisson_noise(self, sound: np.ndarray):
         mean = self.config['poisson_noise']['mean']
         poisson_noise = np.random.poisson(mean, len(sound))
         noisy_sound = sound + poisson_noise

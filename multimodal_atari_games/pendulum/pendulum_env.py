@@ -145,22 +145,17 @@ class PendulumSound(PendulumEnv):
 
         self.reset()
 
-    def step(self, a):
+
+    def step_mm(self, a):
+        if torch.is_tensor(a):
+            a = a.numpy().reshape(-1)
+
         observation, reward, done, info = super().step(a)
         done = self.ep_step > self.max_steps
         self.ep_step += 1
         self.ep_reward += reward
-        return observation, reward, done, info
-
-    def step_mm(self, a):
-
-        if torch.is_tensor(a):
-            a = a.numpy().reshape(-1)
-        observation, reward, done, info = self.step(a)
 
         x, y, thdot = observation
-
-        th = np.arctan2(y,x)
 
         abs_src_vel = np.abs(thdot * 1)  # v = w . r
         # compute ccw perpendicular vector. if angular velocity is
@@ -171,7 +166,7 @@ class PendulumSound(PendulumEnv):
 
         src_pos = np.array([x, y])
 
-        self._frequencies = [
+        frequencies = [
             modified_doppler_effect(
                 self.original_frequency,
                 obs_pos=rec.pos,
@@ -182,12 +177,13 @@ class PendulumSound(PendulumEnv):
                 src_speed=np.linalg.norm(src_vel),
                 sound_vel=self.sound_vel) for rec in self.sound_receivers
         ]
-        self._amplitudes = [
+        amplitudes = [
             inverse_square_law_observer_receiver(
                 obs_pos=rec.pos, src_pos=src_pos)
             for rec in self.sound_receivers
         ]
-        snd_observation = list(zip(self._frequencies, self._amplitudes))
+        snd_observation = np.array(list(zip(frequencies, amplitudes)))
+        snd_observation[:,0] = snd_observation[:,0] / 600   #normalize freq
 
         #get image observation
         img_observation = self.render_(mode=self.rendering_mode)[100:400, 100:400, :]
@@ -199,19 +195,10 @@ class PendulumSound(PendulumEnv):
             else:
                 img_observation = self.image_noise_generator.get_observation(img_observation)
 
-        '''
-        if random.random() < self.sound_noise_generator.frequency:
-            snd_observation = self.sound_noise_generator.get_observation(snd_observation)
-
-        # get noisy image observation
-        if random.random() < self.image_noise_generator.frequency:
-            img_observation = self.image_noise_generator.get_observation(img_observation)'''
-
-
         if self._debug:
             self._debug_data['pos'].append(src_pos)
             self._debug_data['vel'].append(src_vel)
-            self._debug_data['sound'].append(self._frequencies)
+            self._debug_data['sound'].append(frequencies)
 
         rgb = Image.fromarray(img_observation)
         img_observation = np.array(rgb.resize((100,100)))
@@ -219,7 +206,8 @@ class PendulumSound(PendulumEnv):
         obs = dict(
             state=torch.tensor(observation).unsqueeze(0),
             rgb=torch.from_numpy(img_observation).unsqueeze(0),
-            sound=torch.tensor(snd_observation).unsqueeze(0))
+            sound=torch.from_numpy(snd_observation).unsqueeze(0))
+
         reward = torch.tensor(reward).unsqueeze(0)
         done = torch.tensor(done).unsqueeze(0)
         info = {
@@ -316,7 +304,10 @@ class PendulumSound(PendulumEnv):
             )
 
     def reset_mm(self, seed=0, num_initial_steps=1):
-        self.seed(seed)
+        try:
+            self.seed(seed)
+        except:
+            Warning('Seeding failed')
         self.reset()
         self.ep_step = 0
         self.ep_reward = 0.
