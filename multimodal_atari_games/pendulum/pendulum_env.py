@@ -127,10 +127,10 @@ class PendulumSound(PendulumEnv):
         self.obs_modes = ['state','rgb', 'sound']
         img_shape = (100, 100, 3)
         sound_shape = (6,) #(3, 2)
-        state_shape = (3,)
+        self.state_space = self.observation_space
         self.single_state_shape = self.observation_space.shape
         self.observation_space_mm = spaces.Tuple([
-            spaces.Box(low=-8, high=8, shape=state_shape), #state
+            self.state_space, #state
             spaces.Box(low=0, high=255, shape=img_shape), #image
             spaces.Box(low=-np.inf, high=np.inf, shape=sound_shape) #sound
         ])
@@ -157,36 +157,12 @@ class PendulumSound(PendulumEnv):
 
         x, y, thdot = observation
 
-        abs_src_vel = np.abs(thdot * 1)  # v = w . r
-        # compute ccw perpendicular vector. if angular velocity is
-        # negative, we reverse it. then multiply by absolute velocity
-        src_vel = np.array([-y, x])
-        src_vel = (
-            src_vel / np.linalg.norm(src_vel)) * np.sign(thdot) * abs_src_vel
-
-        src_pos = np.array([x, y])
-
-        frequencies = [
-            modified_doppler_effect(
-                self.original_frequency,
-                obs_pos=rec.pos,
-                obs_vel=np.zeros(2),
-                obs_speed=0.0,
-                src_pos=src_pos,
-                src_vel=src_vel,
-                src_speed=np.linalg.norm(src_vel),
-                sound_vel=self.sound_vel) for rec in self.sound_receivers
-        ]
-        amplitudes = [
-            inverse_square_law_observer_receiver(
-                obs_pos=rec.pos, src_pos=src_pos)
-            for rec in self.sound_receivers
-        ]
-        snd_observation = np.array(list(zip(frequencies, amplitudes)))
+        #get sound observation
+        snd_observation = self.sounder_(x, y, thdot)
         snd_observation[:,0] = snd_observation[:,0] / 600   #normalize freq
 
         #get image observation
-        img_observation = self.render_(mode=self.rendering_mode)[100:400, 100:400, :]
+        img_observation = self.render_( np.arctan2(y, x), mode=self.rendering_mode)[100:400, 100:400, :]
 
         # inject noise
         if random.random() < self.noise_frequency:
@@ -228,8 +204,34 @@ class PendulumSound(PendulumEnv):
 
         return obs, reward, done, done, info
 
+    def sounder_ (self, x, y, thdot):
+        abs_src_vel = np.abs(thdot * 1)  # v = w . r
+        # compute ccw perpendicular vector. if angular velocity is
+        # negative, we reverse it. then multiply by absolute velocity
+        src_vel = np.array([-y, x])
+        src_vel = (src_vel / np.linalg.norm(src_vel)) * np.sign(thdot) * abs_src_vel
+        src_pos = np.array([x, y])
 
-    def render_(self, mode='human', sound_channel=0, sound_duration=.1):
+        frequencies = [
+            modified_doppler_effect(
+                self.original_frequency,
+                obs_pos=rec.pos,
+                obs_vel=np.zeros(2),
+                obs_speed=0.0,
+                src_pos=src_pos,
+                src_vel=src_vel,
+                src_speed=np.linalg.norm(src_vel),
+                sound_vel=self.sound_vel) for rec in self.sound_receivers
+        ]
+        amplitudes = [
+            inverse_square_law_observer_receiver(
+                obs_pos=rec.pos, src_pos=src_pos)
+            for rec in self.sound_receivers
+        ]
+        return np.array(list(zip(frequencies, amplitudes)))
+
+
+    def render_(self, theta, mode='human', sound_channel=0, sound_duration=.1):
         try:
             import pygame
             from pygame import gfxdraw
@@ -263,7 +265,7 @@ class PendulumSound(PendulumEnv):
         coords = [(l, b), (l, t), (r, t), (r, b)]
         transformed_coords = []
         for c in coords:
-            c = pygame.math.Vector2(c).rotate_rad(self.state[0] + np.pi / 2)
+            c = pygame.math.Vector2(c).rotate_rad(theta + np.pi / 2)
             c = (c[0] + offset, c[1] + offset)
             transformed_coords.append(c)
         gfxdraw.aapolygon(self.surf, transformed_coords, (204, 77, 77))
@@ -275,7 +277,7 @@ class PendulumSound(PendulumEnv):
         )
 
         rod_end = (rod_length, 0)
-        rod_end = pygame.math.Vector2(rod_end).rotate_rad(self.state[0] + np.pi / 2)
+        rod_end = pygame.math.Vector2(rod_end).rotate_rad(theta + np.pi / 2)
         rod_end = (int(rod_end[0] + offset), int(rod_end[1] + offset))
         gfxdraw.aacircle(
             self.surf, rod_end[0], rod_end[1], int(rod_width / 2), (204, 77, 77)
@@ -347,6 +349,27 @@ class PendulumSound(PendulumEnv):
 
     def get_state(self):
         return torch.from_numpy(self._get_obs()).unsqueeze(0)
+
+    def project(self, state):
+
+        if torch.is_tensor(state):
+            state = state.numpy().reshape(-1)
+        x, y, thdot = state
+        theta = np.arctan2(y, x)
+
+
+
+        snd_observation = self.sounder_(x, y, thdot)
+        snd_observation[:, 0] = snd_observation[:, 0] / 600  # normalize freq
+
+        img_observation = self.render_(theta, mode=self.rendering_mode)[100:400, 100:400, :]
+        rgb = Image.fromarray(img_observation)
+        img_observation = np.array(rgb.resize((100,100)))
+
+        return dict(
+            state=torch.tensor(state).unsqueeze(0),
+            rgb=torch.from_numpy(img_observation).unsqueeze(0),
+            sound=torch.from_numpy(snd_observation).unsqueeze(0))
 
 
 def main():
