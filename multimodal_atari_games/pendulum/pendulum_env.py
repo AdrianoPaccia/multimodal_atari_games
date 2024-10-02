@@ -13,12 +13,6 @@ import random
 import PIL.Image as Image
 import torch
 
-try:
-    from pysine import sine
-    pysine_available = True
-except:
-    pysine_available = False
-
 def modified_doppler_effect(freq, obs_pos, obs_vel, obs_speed, src_pos,
                             src_vel, src_speed, sound_vel):
     # Normalize velocity vectors to find their directions (zero values

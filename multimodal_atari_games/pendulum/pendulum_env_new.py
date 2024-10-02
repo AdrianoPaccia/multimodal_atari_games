@@ -3,20 +3,12 @@
 import numpy as np
 import pickle
 from enum import Enum
-from gym.envs.classic_control.pendulum import PendulumEnv
 from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
 from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
 import random
 import gymnasium as gym
 from gymnasium.wrappers import PixelObservationWrapper
 from os import path
-
-
-try:
-    from pysine import sine
-    pysine_available = True
-except:
-    pysine_available = False
 
 def modified_doppler_effect(freq, obs_pos, obs_vel, obs_speed, src_pos,
                             src_vel, src_speed, sound_vel):

@@ -30,9 +30,9 @@ sounds:
   available_noises: [ 'nonoise','random_obs', 'gaussian_noise' ]
   gaussian_noise:
     amplitude_mu: 0.
-    amplitude_std: 0.1
+    amplitude_std: 0.01
     frequency_mu: 0.
-    frequency_std: 50.
+    frequency_std: 10.
   white_noise: { }
   pink_noise: { }
   brownian_noise: { }
