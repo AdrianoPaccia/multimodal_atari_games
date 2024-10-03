@@ -9,7 +9,7 @@ import yaml
 available_noises = ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
 
 class ImageNoise:
-    def __init__(self, game:str, noise_types: list=[]):
+    def __init__(self, game:str, noise_types: list=[], **kwargs):
         self.noise_types = noise_types
         self.game = game
 
@@ -22,7 +22,7 @@ class ImageNoise:
         except:
              Warning('No offline trajectories stored!')
 
-        if not set(noise_types).issubset(set(available_noises)):
+        if not set(noise_types).issubset(self.config['available_noises']):
             raise ValueError("Noise types not supported")
 
     def get_observation(self, image):
@@ -162,7 +162,7 @@ class ImageNoise:
 
 
 class SoundNoise:
-    def __init__(self, game:str, noise_types: list=[], frequency:float=0.0):
+    def __init__(self, game:str, noise_types: list=[], frequency:float=0.0,  **kwargs):
         self.noise_types = noise_types
         self.frequency = frequency
         self.game = game
@@ -175,7 +175,7 @@ class SoundNoise:
         except:
              Warning('No offline trajectories stored!')
 
-        if not set(noise_types).issubset(set(available_noises)):
+        if not set(noise_types).issubset(set(self.config['available_noises'])):
             raise ValueError("Noise types not supported")
 
 
@@ -242,7 +242,85 @@ class SoundNoise:
         return np.zeros_like(sound)
 
     def apply_background_noise(self, sound: np.ndarray):
-        sound[:,0] += random.uniform(0., 1.0)
-        sound[:,1] += random.uniform(0., 1.0)
+        sound[:, 0] += random.uniform(0., 1.0)
+        sound[:, 1] += random.uniform(0., 1.0)
         return np.clip(sound, a_min=0., a_max=1.)
 
+
+
+
+class StateNoise:
+    def __init__(self, game:str, noise_types: list=[], **kwargs):
+        self.noise_types = noise_types
+        self.game = game
+        with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
+            self.config = yaml.safe_load(f)['states']
+
+        try:
+            self.random_states = np.load(os.path.join(os.path.dirname(__file__), f'offline_trajectories/{self.game}.npz'),
+                                 allow_pickle=True)['state']
+        except:
+             Warning('No offline trajectories stored!')
+
+        try:
+            self.bounds = kwargs['bounds']
+        except:
+            self.bounds = (-np.inf, np.inf)
+
+        if not set(noise_types).issubset(set(self.config['available_noises'])):
+            raise ValueError("Noise types not supported")
+
+        if not set(noise_types).issubset(set(available_noises)):
+            raise ValueError("Noise types not supported")
+
+    def get_observation(self, x):
+        noise = random.choice(self.noise_types)
+        return self.apply_noise(noise, x)
+
+    def apply_noise(self,  noise_type:str,x: np.ndarray):
+        if noise_type == 'gaussian_noise':
+            x_ = self.apply_gaussian_noise(x)
+        elif noise_type == 'random_obs':
+            x_ = self.get_random_observation(x)
+        elif noise_type == 'partial_obs':
+            x_ = self.get_partial_obs(x)
+        elif noise_type == 'sensor_fail':
+            x_ = self.get_blank_obs(x)
+        elif noise_type == 'background_noise':
+            x_ = self.apply_background_noise(x)
+        elif noise_type == 'nonoise':
+            x_ = x
+        else:
+            raise ValueError(f"Unsupported noise type: {noise_type}")
+        return x_
+
+    def apply_random_noise(self, x):
+        noise_type = random.choice(list(self.noise_types))
+        return self.apply_noise(x,noise_type)
+
+    def apply_all_noises(self,x):
+        xs_ = []
+        for noise_type in self.noise_types:
+            xs_.append(self.apply_noise(noise_type, xs_))
+        return xs_, self.noise_types
+
+    #all implemented noises
+    def apply_gaussian_noise(self, x):
+        mu, std = self.config['gaussian_noise']['mu'],self.config['gaussian_noise']['std'],
+        noise = np.random.normal(mu, std, size=x.shape)
+        return x + noise
+
+    def get_random_observation(self, x):
+        i_rand = random.randint(0, self.random_states.shape[0] - 1)
+        return self.random_states[i_rand]
+
+    def get_partial_obs(self, x):
+        n = random.randint(0, x.shape[0]-1)
+        x[n] = 0.
+        return x
+
+    def get_blank_obs(self, x):
+        return np.zeros_like(x)
+    def apply_background_noise(self, x: np.ndarray):
+        noise = np.ones_like(x)*np.random.uniform(low=-0.1, high=0.1)
+        return np.clip(x + noise, a_min=self.bounds[0], a_max=self.bounds[1])

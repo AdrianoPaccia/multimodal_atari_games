@@ -6,8 +6,7 @@ import numpy as np
 import pickle
 from enum import Enum
 from gym.envs.classic_control.pendulum import PendulumEnv
-from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
-from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
+from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, SoundNoise, StateNoise
 import random
 #import cv2
 import PIL.Image as Image
@@ -97,8 +96,14 @@ class PendulumSound(PendulumEnv):
             original_frequency=440.,
             sound_vel=20.,
             sound_receivers=[SoundReceiver(SoundReceiver.Location.RIGHT_TOP)],
-            image_noise_generator=ImageNoise(noise_types=[], game='pendulum'),
-            sound_noise_generator=SoundNoise(noise_types=[], game='pendulum'),
+            noise_generators={
+                'rgb':ImageNoise(noise_types=[], game='pendulum'),
+                'sound':SoundNoise(noise_types=[], game='pendulum'),
+                'state':StateNoise(noise_types=[], game='pendulum'),
+
+            },
+            #image_noise_generator=ImageNoise(noise_types=[], game='pendulum'),
+            #sound_noise_generator=SoundNoise(noise_types=[], game='pendulum'),
             noise_frequency=0.0,
             rendering_mode='rgb_array',
             max_steps=200,
@@ -107,8 +112,6 @@ class PendulumSound(PendulumEnv):
         self.original_frequency = original_frequency
         self.sound_vel = sound_vel
         self.sound_receivers = sound_receivers
-        self.image_noise_generator = image_noise_generator
-        self.sound_noise_generator = sound_noise_generator
         self.noise_frequency = noise_frequency
         self.rendering_mode = rendering_mode
         self._debug = debug
@@ -116,6 +119,7 @@ class PendulumSound(PendulumEnv):
         self.ep_step = 0
         self.device = torch.device('cpu')
         self.img_trans = torchvision.transforms.Resize((100,100))
+        self.noise_generators = noise_generators
 
         #spaces
         self.obs_modes = ['state','rgb', 'sound']
@@ -144,12 +148,12 @@ class PendulumSound(PendulumEnv):
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        observation, reward, done, info = super().step(a)
+        state_observation, reward, done, info = super().step(a)
         done = self.ep_step > self.max_steps
         self.ep_step += 1
         self.ep_reward += reward
 
-        x, y, thdot = observation
+        x, y, thdot = state_observation
 
         #get sound observation
         snd_observation = self.sounder_(x, y, thdot)
@@ -160,10 +164,14 @@ class PendulumSound(PendulumEnv):
 
         # inject noise
         if random.random() < self.noise_frequency:
-            if bool(random.getrandbits(1)):
-                snd_observation = self.sound_noise_generator.get_observation(snd_observation)
+            m = random.choice(list(self.noise_generators))
+            noise_generator = self.noise_generators[m]
+            if m == 'rgb':
+                img_observation = noise_generator.get_observation(img_observation)
+            elif m == 'sound':
+                snd_observation = noise_generator.get_observation(snd_observation)
             else:
-                img_observation = self.image_noise_generator.get_observation(img_observation)
+                state_observation = noise_generator.get_observation(state_observation)
 
         if self._debug:
             self._debug_data['pos'].append(src_pos)
@@ -174,7 +182,7 @@ class PendulumSound(PendulumEnv):
         img_observation = np.array(rgb.resize((100,100)))
 
         obs = dict(
-            state=torch.tensor(observation).unsqueeze(0),
+            state=torch.tensor(state_observation).unsqueeze(0),
             rgb=torch.from_numpy(img_observation).unsqueeze(0),
             sound=torch.from_numpy(snd_observation).unsqueeze(0))
 

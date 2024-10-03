@@ -1,38 +1,10 @@
-
-
-def build_env(game, config=None, obs1_noise_freq=0.0, obs2_noise_freq=0.0, obs1_noises:list=['nonoise'], obs2_noises:list=['nonoise'], render=False):
-
-    if game=='pendulum_multimodal':
-        return build_env_pendulum(
-            config=config, noise_freq=obs1_noise_freq, image_noises=obs1_noises, sound_noises=obs2_noises, render=render
-        )
-
-    elif game=='pong':
-        return build_env_atari(
-            game=game, image_noise_freq=obs1_noise_freq, ram_noise_freq=obs2_noise_freq,
-            image_noises=obs1_noises, ram_noises=obs2_noises, render=render
-        )
-
-    elif game=='cheetah' or game=='humanoid':
-        return build_env_mujoco(
-            game=game, image_noise_freq=obs1_noise_freq, conf_noise_freq=obs2_noise_freq,
-            image_noises=obs1_noises, conf_noises=obs2_noises, max_episode_steps=config.max_episode_steps, render=render
-        )
-
-    elif game.startswith('antmaze') or game.startswith('pointmaze') or game.startswith('fetch'):
-        return build_env_robotics(
-            game=game, image_noise_freq=obs1_noise_freq, conf_noise_freq=obs2_noise_freq,
-            image_noises=obs1_noises, conf_noises=obs2_noises, max_episode_steps=config.max_episode_steps,
-            map_size=config.map_size, reward_type=config.reward_type, render=render)
-    else:
-        raise ValueError(f'{game} is not a valid game.')
-
-
 def build_env_pendulum(config, noise_freq=0.0,noise_types:list=['nonoise'], render=False):
 
     import multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_env as ps
-    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, SoundNoise
+    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, SoundNoise, StateNoise
+    kwargs = {
 
+    }
     return ps.PendulumSound(
         original_frequency=config.original_frequency,
         sound_vel=config.sound_velocity,
@@ -40,12 +12,15 @@ def build_env_pendulum(config, noise_freq=0.0,noise_types:list=['nonoise'], rend
             ps.SoundReceiver(ps.SoundReceiver.Location[ss])
             for ss in config.sound_receivers
         ],
-        image_noise_generator=ImageNoise(
-            noise_types=noise_types,
-            game='pendulum'),
-        sound_noise_generator=SoundNoise(
-            noise_types=noise_types,
-            game='pendulum'),
+        noise_generators={
+            'rgb': ImageNoise(noise_types=noise_types,game='pendulum',
+                       **{'bounds': (config.low_bounds['rgb'], config.high_bounds['rgb'])}),
+            'sound': SoundNoise(noise_types=noise_types, game='pendulum',
+                       **{'bounds': (config.low_bounds['sound'], config.high_bounds['sound'])}),
+            'state': StateNoise(noise_types=noise_types, game='pendulum',
+                       **{'low_bounds': (config.low_bounds['state'], config.high_bounds['state'])}),
+
+        },
         noise_frequency=noise_freq,
         rendering_mode='human' if render else 'rgb_array',
     )
