@@ -82,6 +82,9 @@ class SoundReceiver(object):
             self.pos = np.array([BOTTOM_MARGIN, 0.0])
 
 
+import torchvision.transforms as tf
+rs = tf.Resize(size=(100,100))
+
 class PendulumSound(PendulumEnv):
     """
     Frame:
@@ -120,6 +123,9 @@ class PendulumSound(PendulumEnv):
         self.device = torch.device('cpu')
         self.img_trans = torchvision.transforms.Resize((100,100))
         self.noise_generators = noise_generators
+        self.n_noisy_obs = len(self.noise_generators)-1
+        #only one obs is not affected by noise
+
 
         #spaces
         self.obs_modes = ['state','rgb', 'sound']
@@ -148,44 +154,30 @@ class PendulumSound(PendulumEnv):
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        state_observation, reward, done, info = super().step(a)
+        state, reward, done, info = super().step(a)
         done = self.ep_step > self.max_steps
         self.ep_step += 1
         self.ep_reward += reward
 
-        x, y, thdot = state_observation
+        x, y, thdot = state
 
-        #get sound observation
-        snd_observation = self.sounder_(x, y, thdot)
-        snd_observation[:,0] = snd_observation[:,0] / 600   #normalize freq
-
-        #get image observation
-        img_observation = self.render_( np.arctan2(y, x), mode=self.rendering_mode)[100:400, 100:400, :]
+        #get the observations and build the dict
+        obs = dict(
+            state=state,
+            sound=self.sounder_(x, y, thdot),
+            rgb=self.render_(np.arctan2(y, x), mode=self.rendering_mode)[100:400, 100:400, :]
+        )
 
         # inject noise
         if random.random() < self.noise_frequency:
-            m = random.choice(list(self.noise_generators))
-            noise_generator = self.noise_generators[m]
-            if m == 'rgb':
-                img_observation = noise_generator.get_observation(img_observation)
-            elif m == 'sound':
-                snd_observation = noise_generator.get_observation(snd_observation)
-            else:
-                state_observation = noise_generator.get_observation(state_observation)
+            for m in random.sample(list(self.noise_generators.keys()), self.n_noisy_obs):
+                obs[m] = self.noise_generators[m].get_observation(obs[m])
 
-        if self._debug:
-            self._debug_data['pos'].append(src_pos)
-            self._debug_data['vel'].append(src_vel)
-            self._debug_data['sound'].append(frequencies)
-
-        rgb = Image.fromarray(img_observation)
-        img_observation = np.array(rgb.resize((100,100)))
-
-        obs = dict(
-            state=torch.tensor(state_observation).unsqueeze(0),
-            rgb=torch.from_numpy(img_observation).unsqueeze(0),
-            sound=torch.from_numpy(snd_observation).unsqueeze(0))
-
+        #process the obs:
+        obs['sound'] /= np.array([600, 1.]) #norm the sound
+        rgb = Image.fromarray(obs['rgb'])
+        obs['rgb'] = np.array(rgb.resize((100,100))) #resize the image
+        obs = {m: torch.from_numpy(o).unsqueeze(0) for m,o in obs.items()}
         reward = torch.tensor(reward).unsqueeze(0)
         done = torch.tensor(done).unsqueeze(0)
         info = {

@@ -1,7 +1,7 @@
 images:
   available_noises: ['nonoise','random_obs', 'gaussian_noise', 'salt_pepper_noise', 'poisson_noise', 'speckle_noise',
                      'uniform_noise', 'background_noise',  'gaussian_blur', 'motion_blur', 'quantization_noise',
-                     'confounders_noise', 'partial_obs']
+                     'confounders_noise', 'partial_obs', 'sensor_fail']
   gaussian_noise:
     mu: 0
     std: 25

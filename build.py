@@ -1,10 +1,31 @@
-def build_env_pendulum(config, noise_freq=0.0,noise_types:list=['nonoise'], render=False):
-
+def build_env_pendulum(
+        config,
+        noise_modes: list = [],
+        noise_freq: float = 0.0,
+        noise_types: list = ['nonoise'],
+        render=False):
+    """
+    Builds the pendulum environment.
+    :param config: sound configuration NameSpace (original_frequency, sound_velocity, sound_receivers)
+    :param noise_modes: list = modes affected by noise
+    :param noise_freq: float = frequency of noisy observations
+    :param noise_types: list = noises applied to the noise_modes
+    :param render: bool = True (for rendering the obs)
+    :return: pendulum multimodal env
+    """
     import multimodal_atari_games.multimodal_atari_games.pendulum.pendulum_env as ps
     from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, SoundNoise, StateNoise
-    kwargs = {
+    noise_generators = {}
+    if 'rgb' in noise_modes:
+        noise_generators['rgb'] = ImageNoise(noise_types=noise_types,game='pendulum',
+                           **{'bounds': (config.low_bounds['rgb'], config.high_bounds['rgb'])})
+    if 'sound' in noise_modes:
+        noise_generators['sound'] = SoundNoise(noise_types=noise_types, game='pendulum',
+                           **{'bounds': (config.low_bounds['sound'], config.high_bounds['sound'])})
+    if 'state' in noise_modes:
+        noise_generators['state'] = StateNoise(noise_types=noise_types, game='pendulum',
+                       **{'low_bounds': (config.low_bounds['state'], config.high_bounds['state'])})
 
-    }
     return ps.PendulumSound(
         original_frequency=config.original_frequency,
         sound_vel=config.sound_velocity,
@@ -12,15 +33,7 @@ def build_env_pendulum(config, noise_freq=0.0,noise_types:list=['nonoise'], rend
             ps.SoundReceiver(ps.SoundReceiver.Location[ss])
             for ss in config.sound_receivers
         ],
-        noise_generators={
-            'rgb': ImageNoise(noise_types=noise_types,game='pendulum',
-                       **{'bounds': (config.low_bounds['rgb'], config.high_bounds['rgb'])}),
-            'sound': SoundNoise(noise_types=noise_types, game='pendulum',
-                       **{'bounds': (config.low_bounds['sound'], config.high_bounds['sound'])}),
-            'state': StateNoise(noise_types=noise_types, game='pendulum',
-                       **{'low_bounds': (config.low_bounds['state'], config.high_bounds['state'])}),
-
-        },
+        noise_generators=noise_generators,
         noise_frequency=noise_freq,
         rendering_mode='human' if render else 'rgb_array',
     )
