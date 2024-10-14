@@ -7,8 +7,11 @@ from multimodal_atari_games.multimodal_atari_games.noise.image_noise import Imag
 from gym import spaces
 from PIL import Image
 import copy
+from dm_control import suite
+from dm_control.suite.wrappers import pixels
+os.environ["MUJOCO_GL"] = "egl"
 
-class CheetahImageConfiguration(HalfCheetahEnv):
+class CheetahImageConfiguration:#(HalfCheetahEnv):
 
     def __init__(
             self,
@@ -18,79 +21,82 @@ class CheetahImageConfiguration(HalfCheetahEnv):
             max_episode_steps=300,
             noise_frequency=0.0
     ):
-        super().__init__(render_mode=render_mode)
+
+        #super().__init__(render_mode=render_mode)
         #self.ram_noise_generator=ram_noise_generator
         self.image_noise_generator=image_noise_generator
         self.max_episode_steps = max_episode_steps
         self.noise_frequency = noise_frequency
-        self.ep_step = 0
         self.ep_reward = 0.
         self.device = torch.device('cpu')
         self.obs_modes = ['state','rgb']
-        state_shape = (17,)
-        img_shape = (100, 100, 3)
-        self.single_state_shape = self.observation_space.shape
 
-        self.observation_space_mm = spaces.Tuple([
-            spaces.Box(low=-8, high=8, shape=state_shape),  # state
+        #env setup
+        env_ = suite.load('cheetah', 'run')
+        self.env = pixels.Wrapper(
+            env_,
+            pixels_only=False,
+            render_kwargs={'height': 100, 'width': 100, 'camera_id': 0},
+            observation_key='rgb',
+        )
+        img_shape = self.env.observation_spec()['rgb'].shape
+        self.single_state_shape = (sum(x for x in self.env.observation_spec()['position'].shape + self.env.observation_spec()['velocity'].shape),)
+
+        self.single_observation_space_mm = spaces.Tuple([
+            spaces.Box(low=-8., high=8., shape=self.single_state_shape),  # state
             spaces.Box(low=0, high=255, shape=img_shape),  # image
         ])
 
-        self.single_observation_space_mm = self.observation_space_mm
-        self.single_action_space = copy.deepcopy(self.action_space)
+        self.observation_space_mm = spaces.Tuple([
+            spaces.Box(low=-8., high=8., shape=(1,)+self.single_state_shape),  # state
+            spaces.Box(low=0, high=255, shape=(1,)+img_shape),  # image
+        ])
 
+        act_spec = self.env.action_spec()
+        self.single_action_space = spaces.Box(low=act_spec.minimum[0], high=act_spec.maximum[0], shape=act_spec.shape)
+        self.action_space = self.single_action_space
 
 
     def step(self, a):
-        observation, reward, done, truncated, info = super().step(a)
-        truncated = self.ep_step > self.max_episode_steps
-        self.ep_step += 1
-        self.ep_reward += reward
-        return observation, reward, done, truncated, info
+        timestep = self.env.step(a)
+        truncated = self.env._step_count > self.max_episode_steps
+        self.ep_reward += timestep.reward
+        return timestep.observation, timestep.reward, timestep.last(), truncated, {}
 
     def step_mm(self, a):
 
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        ram_observation, reward, done, truncated, info = self.step(a)
+        observation, reward, done, truncated, info = self.step(a)
 
-        self.ep_step += 1
-
-        if self.ep_step >= self.max_episode_steps:
+        if self.env._step_count >= self.max_episode_steps:
             truncated = True
 
-        reward = torch.tensor(reward).unsqueeze(0)
-        done = torch.tensor(done).unsqueeze(0)
-        truncated = torch.tensor(truncated).unsqueeze(0)
+        reward = torch.tensor([reward]).unsqueeze(0)
+        done = torch.tensor([done]).unsqueeze(0)
+        truncated = torch.tensor([truncated]).unsqueeze(0)
 
         info = {
-            'elapsed_steps': torch.tensor([self.ep_step]),
+            'elapsed_steps': torch.tensor([self.env._step_count]),
             'episode': {'r': torch.tensor([self.ep_reward])}
         }
 
-        try:
-            img_observation = super().render()[180:480, 100:400]
-            if random.random() < self.noise_frequency:
-                img_observation = self.image_noise_generator.get_observation(img_observation)
-                # if bool(random.getrandbits(1)):
-                #    img_observation = self.image_noise_generator.get_observation(img_observation)
-                # else:
-                #    ram_observation = self.ram_noise_generator.get_observation(ram_observation)
+        if random.random() < self.noise_frequency:
+            if True:
+                observation['rgb'] = self.image_noise_generator.get_observation(observation['rgb'])
+            else:
+                pass
 
-            rgb = Image.fromarray(img_observation)
-            img_observation = np.array(rgb.resize((100, 100)))
-
-            obs = dict(
-                state=torch.tensor(ram_observation).unsqueeze(0),
-                rgb=torch.from_numpy(img_observation).unsqueeze(0)
-            )
-        except:
-            obs = dict(state=torch.tensor(ram_observation).unsqueeze(0))
+        state = np.concatenate([v for k, v in observation.items() if k != 'rgb'], axis=-1)
+        obs = dict(
+            state=torch.from_numpy(state).unsqueeze(0),
+            rgb=torch.from_numpy(observation['rgb'].copy()).unsqueeze(0)
+        )
 
         if done or truncated:
             info['final_info'] = {
-                'elapsed_steps': torch.tensor([self.ep_step]),
+                'elapsed_steps': torch.tensor([self.env._step_count]),
                 'episode': {
                     'r': torch.tensor([self.ep_reward]),
                     '_r': torch.tensor([True])
@@ -102,16 +108,17 @@ class CheetahImageConfiguration(HalfCheetahEnv):
         return obs, reward, done, truncated, info
 
     def render(self):
-        return super().render()
+        return self.env.render(mode='human')
+
+    def reset(self):
+        self.ep_reward = 0.
+        return self.env.reset()
+
 
 
     def reset_mm(self, seed=0, num_initial_steps=1):
         #self.seed(seed)
         self.reset()
-        self.ep_step = 0
-        self.ep_reward = 0.
-
-        super().reset()
 
         if type(num_initial_steps) is list or type(num_initial_steps) is tuple:
             assert len(num_initial_steps) == 2
@@ -133,5 +140,5 @@ class CheetahImageConfiguration(HalfCheetahEnv):
         super().close()
 
     def get_state(self):
-        return torch.from_numpy(self._get_obs()).unsqueeze(0)
+        return torch.from_numpy(self.env._env.physics.state()[1:]).unsqueeze(0)
 

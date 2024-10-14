@@ -123,7 +123,7 @@ class PendulumSound(PendulumEnv):
         self.device = torch.device('cpu')
         self.img_trans = torchvision.transforms.Resize((100,100))
         self.noise_generators = noise_generators
-        self.n_noisy_obs = len(self.noise_generators)-1
+        self.n_noisy_obs = 1 #len(self.noise_generators)-1
         #only one obs is not affected by noise
 
 
