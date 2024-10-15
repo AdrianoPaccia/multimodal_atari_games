@@ -1,30 +1,28 @@
 import os
 import random
-from gymnasium.envs.mujoco.half_cheetah_v4 import HalfCheetahEnv
 import numpy as np
 import torch
-from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
+from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, StateNoise
 from gym import spaces
-from PIL import Image
-import copy
 from dm_control import suite
 from dm_control.suite.wrappers import pixels
 os.environ["MUJOCO_GL"] = "egl"
 
-class CheetahImageConfiguration:#(HalfCheetahEnv):
+
+
+class CheetahImageConfiguration:
 
     def __init__(
             self,
             render_mode='rgb_array',
-            #ram_noise_generator=RamNoise([],0.0, game='pong'),
+            state_noise_generator=StateNoise(game='cheetah', noise_types=[]),
             image_noise_generator=ImageNoise(noise_types=[], game='cheetah'),
             max_episode_steps=300,
             noise_frequency=0.0
     ):
 
-        #super().__init__(render_mode=render_mode)
-        #self.ram_noise_generator=ram_noise_generator
-        self.image_noise_generator=image_noise_generator
+        self.state_noise_generator = state_noise_generator
+        self.image_noise_generator = image_noise_generator
         self.max_episode_steps = max_episode_steps
         self.noise_frequency = noise_frequency
         self.ep_reward = 0.
@@ -40,10 +38,12 @@ class CheetahImageConfiguration:#(HalfCheetahEnv):
             observation_key='rgb',
         )
         img_shape = self.env.observation_spec()['rgb'].shape
-        self.single_state_shape = (sum(x for x in self.env.observation_spec()['position'].shape + self.env.observation_spec()['velocity'].shape),)
+        self.state_keys = list(self.env._env.observation_spec().keys())
+        self.single_state_shape = (sum([self.env.observation_spec()[k].shape[0] for k in self.state_keys]),)
 
+        self.state_space = spaces.Box(low=-8., high=8., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
-            spaces.Box(low=-8., high=8., shape=self.single_state_shape),  # state
+            self.state_space,  # state
             spaces.Box(low=0, high=255, shape=img_shape),  # image
         ])
 
@@ -108,13 +108,11 @@ class CheetahImageConfiguration:#(HalfCheetahEnv):
         return obs, reward, done, truncated, info
 
     def render(self):
-        return self.env.render(mode='human')
+        return self.env._env.physics.render()
 
     def reset(self):
         self.ep_reward = 0.
         return self.env.reset()
-
-
 
     def reset_mm(self, seed=0, num_initial_steps=1):
         #self.seed(seed)
@@ -132,13 +130,13 @@ class CheetahImageConfiguration:#(HalfCheetahEnv):
             raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
 
         for _ in range(num_initial_steps):
-            obs, _, _, _, info = self.step_mm([0.]*6)
+            obs, _, _, _, info = self.step_mm([0.]*sum(self.env.action_spec().shape))
 
         return obs, info
 
     def close(self):
-        super().close()
+        self.env.close()
 
     def get_state(self):
-        return torch.from_numpy(self.env._env.physics.state()[1:]).unsqueeze(0)
-
+        s = np.concatenate([getattr(self.env._env.physics,k)() for k in self.state_keys])
+        return torch.from_numpy(s).unsqueeze(0)

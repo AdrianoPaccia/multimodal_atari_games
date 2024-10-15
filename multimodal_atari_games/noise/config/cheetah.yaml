@@ -38,7 +38,7 @@ images:
 
 
 
-conf:
+states:
   available_noises: [ 'nonoise' ]
 
   gaussian_noise:
