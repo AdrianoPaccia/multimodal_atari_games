@@ -11,7 +11,7 @@ from dm_control import suite
 from dm_control.suite.wrappers import pixels
 os.environ["MUJOCO_GL"] = "egl"
 
-class CheetahImageConfiguration:#(HalfCheetahEnv):
+class CheetahImageConfiguration:
 
     def __init__(
             self,
@@ -41,9 +41,9 @@ class CheetahImageConfiguration:#(HalfCheetahEnv):
         )
         img_shape = self.env.observation_spec()['rgb'].shape
         self.single_state_shape = (sum(x for x in self.env.observation_spec()['position'].shape + self.env.observation_spec()['velocity'].shape),)
-
+        self.state_space = spaces.Box(low=-8., high=8., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
-            spaces.Box(low=-8., high=8., shape=self.single_state_shape),  # state
+            self.state_space,  # state
             spaces.Box(low=0, high=255, shape=img_shape),  # image
         ])
 
@@ -142,3 +142,18 @@ class CheetahImageConfiguration:#(HalfCheetahEnv):
     def get_state(self):
         return torch.from_numpy(self.env._env.physics.state()[1:]).unsqueeze(0)
 
+
+
+'''module load Anaconda
+conda activate base
+source /proj/rep-learning-robotics/users/x_adrpa/MRL/bin/activate
+
+#wandb
+export WANDB_API_KEY=42ed698c28ccf287342f44e6978918b9c9812308
+
+cd /proj/rep-learning-robotics/users/x_adrpa/multimodal_representation_for_RL/baselines/sac_TWN
+export PYTHONPATH=/proj/rep-learning-robotics/users/x_adrpa/multimodal_representation_for_RL/
+export MUJOCO_GL=egl
+python sac.py --env=cheetah --num_envs=1 --num_eval_envs=1 --utd=0.5 --buffer_size=30_000 --total_timesteps=1_000_000 --eval_freq=10_000 --no-save_checkpoint --save_model --seed=1 --fusion_strategy=None --gamma=0.9 --batch_size=64 --modes=state+rgb --buffer_device=cuda --sim_device=cuda --eval_freq=10_000 --learning_starts=3000  --training_freq=3000 --wandb_group=berzelius_prove --wandb_name=cheetah_state+rgb --num_eval_episodes=3 --eval_noise_types=gaussian_noise --eval_noise_freq=0.0 --autotune --track
+
+'''
