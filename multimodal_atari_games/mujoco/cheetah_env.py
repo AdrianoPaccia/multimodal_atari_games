@@ -69,6 +69,7 @@ class CheetahImageConfiguration:
             a = a.numpy().reshape(-1)
 
         observation, reward, done, truncated, info = self.step(a)
+        state = np.concatenate([v for k, v in observation.items() if k != 'rgb'], axis=-1)
 
         if self.env._step_count >= self.max_episode_steps:
             truncated = True
@@ -83,12 +84,11 @@ class CheetahImageConfiguration:
         }
 
         if random.random() < self.noise_frequency:
-            if True:
+            if random.random() < 0.5:
                 observation['rgb'] = self.image_noise_generator.get_observation(observation['rgb'])
             else:
-                pass
+                state = self.state_noise_generator.get_observation(state)
 
-        state = np.concatenate([v for k, v in observation.items() if k != 'rgb'], axis=-1)
         obs = dict(
             state=torch.from_numpy(state).unsqueeze(0),
             rgb=torch.from_numpy(observation['rgb'].copy()).unsqueeze(0)

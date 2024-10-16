@@ -1,5 +1,5 @@
 images:
-  available_noises: [ 'nonoise','random_obs', 'gaussian_noise', 'salt_pepper_noise', 'poisson_noise', 'speckle_noise','uniform_noise', 'gaussian_blur', 'motion_blur', 'quantization_noise', 'confounders_noise' ]
+  available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
 
   gaussian_noise:
     mu: 0
@@ -39,8 +39,7 @@ images:
 
 
 states:
-  available_noises: [ 'nonoise' ]
-
+  available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
   gaussian_noise:
     mu: 0
     std: 0.1

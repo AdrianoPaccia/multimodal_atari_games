@@ -54,17 +54,17 @@ def build_env_atari(game, noise_freq=0.0, noise_types:list=['nonoise'], render=F
     )
 
 def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_episode_steps=1000, render=False, **kwargs):
-    from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
+    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, StateNoise
 
     if game=='cheetah':
         from multimodal_atari_games.multimodal_atari_games.mujoco.cheetah_env import CheetahImageConfiguration
 
         return CheetahImageConfiguration(
-                render_mode='rgb_array', #None,
+                render_mode='rgb_array',
                 image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types),
+                state_noise_generator=StateNoise(game='cheetah', noise_types=noise_types),
                 max_episode_steps=max_episode_steps,
                 noise_frequency=noise_freq
-                #ram_noise_generator=RamNoise(['random_obs'], 1.0),
             )
 
 
