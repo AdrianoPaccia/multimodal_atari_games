@@ -28,6 +28,7 @@ class HumanoidImageConfiguration:
         self.ep_reward = 0.
         self.device = torch.device('cpu')
         self.obs_modes = ['state','rgb']
+        self.state = None
 
         #env setup
         env_ = suite.load('humanoid', 'run')
@@ -38,7 +39,8 @@ class HumanoidImageConfiguration:
             observation_key='rgb',
         )
         img_shape = self.env.observation_spec()['rgb'].shape
-        self.single_state_shape = (55,)
+        self.single_state_shape = (67,) #(55,)
+        self.state_keys = ['joint_angles', 'head_height', 'extremities', 'torso_vertical', 'com_velocity', 'velocity']
 
         self.state_space = spaces.Box(low=-8., high=8., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
@@ -67,8 +69,9 @@ class HumanoidImageConfiguration:
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        observation, reward, done, truncated, info = self.step(a)
-        state = self.env._env.physics.get_state()
+        self.observation, reward, done, truncated, info = self.step(a)
+        image = self.observation['rgb']
+        state = np.concatenate([self.observation[k].reshape(-1) for k in self.state_keys])
 
         if self.env._step_count >= self.max_episode_steps:
             truncated = True
@@ -84,13 +87,13 @@ class HumanoidImageConfiguration:
 
         if random.random() < self.noise_frequency:
             if random.random() < 0.5:
-                observation['rgb'] = self.image_noise_generator.get_observation(observation['rgb'])
+                image = self.image_noise_generator.get_observation(image)
             else:
                 state = self.state_noise_generator.get_observation(state)
 
         obs = dict(
             state=torch.from_numpy(state).unsqueeze(0),
-            rgb=torch.from_numpy(observation['rgb'].copy()).unsqueeze(0)
+            rgb=torch.from_numpy(image.copy()).unsqueeze(0)
         )
 
         if done or truncated:
@@ -137,4 +140,5 @@ class HumanoidImageConfiguration:
         self.env.close()
 
     def get_state(self):
-        return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)
+        return torch.from_numpy(np.concatenate([self.observation[k].reshape(-1) for k in self.state_keys])).unsqueeze(0)
+        #return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)
