@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import os
 import yaml
-
+import copy
 
 available_noises = ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
 
@@ -163,6 +163,112 @@ class ImageNoise:
         composite_image = np.clip(composite_image, 0, 255).astype(np.uint8)
 
         return composite_image
+
+
+class DepthNoise:
+    def __init__(self, game:str, noise_types: list=[], **kwargs):
+        self.noise_types = noise_types
+        self.game = game
+
+        with open(os.path.join(os.path.dirname(__file__), f'config/{game}.yaml'), 'r') as f:
+            self.config = yaml.safe_load(f)['depths']
+
+        try:
+            self.random_depths = np.load(os.path.join(os.path.dirname(__file__),f'offline_trajectories/{self.game}.npz'),
+                       allow_pickle=True)['depth']
+        except:
+             Warning('No offline trajectories stored!')
+
+        if not set(noise_types).issubset(self.config['available_noises']):
+            raise ValueError("Noise types not supported")
+
+    def get_observation(self, depth):
+        noise = random.choice(self.noise_types)
+        return self.apply_noise(noise, depth)
+
+    def apply_noise(self, noise_type: str, depth):
+        img = depth.copy()
+        if noise_type == 'gaussian_noise':
+            noisy_depth = self.apply_gaussian_noise(img)
+        elif noise_type == 'background_noise':
+            noisy_depth = self.apply_background_noise(img)
+        elif noise_type == 'confounders_noise' or noise_type == 'partial_obs':
+            noisy_depth = self.apply_confounders_noise(img)
+        elif noise_type == 'random_obs':
+            noisy_depth = self.get_random_observation()
+        elif noise_type == 'nonoise':
+            noisy_depth = img
+        elif noise_type == 'sensor_fail':
+            noisy_depth = self.get_blank_depth(img)
+        else:
+            raise ValueError(f"Unsupported noise type: {noise_type}")
+        return noisy_depth
+
+    def apply_random_noise(self, depth):
+        noise_type = random.choice(list(self.noise_types))
+        return self.apply_noise(noise_type, depth)
+
+    def apply_all_noises(self, depth):
+        noisy_depths = []
+        for noise_type in self.noise_types:
+            noisy_depths.append(self.apply_noise(noise_type, depth))
+        return noisy_depths, self.noise_types
+
+    # all implemented noises
+    def apply_gaussian_noise(self, depth):
+        mean = self.config['gaussian_noise']['mu']
+        stddev = self.config['gaussian_noise']['std']
+        noise = np.random.normal(mean, stddev, depth.shape).astype(np.uint8)
+        noisy_depth = np.clip(depth.astype(np.int16) + noise.astype(np.int16), 0, 255).astype(np.uint8)
+        return noisy_depth
+
+    def get_blank_depth(self, depth):
+        return np.zeros_like(depth)
+
+    def apply_confounders_noise(self, depth):
+        noisy_depth = depth.copy()
+        max_patch_size = self.config['confounders_noise']['max_size']
+        min_patch_size = self.config['confounders_noise']['min_size']
+        max_num_patches = self.config['confounders_noise']['max_num_patches']
+        min_depth = self.config['bounds']['min_depth']
+        max_depth = self.config['bounds']['max_depth']
+
+        n = random.randint(1, max_num_patches)
+        height, width = depth.shape
+
+        for _ in range(n):
+            side_1 = random.randint(min_patch_size, max_patch_size)
+            side_2 = random.randint(min_patch_size, max_patch_size)
+            x = random.randint(0, width - side_1)
+            y = random.randint(0, height - side_2)
+            for i in range(3):
+                noisy_depth[y:y + side_1, x:x + side_2] = random.uniform(min_depth, max_depth)
+        return noisy_depth
+
+    def get_random_observation(self):
+        i_rand = random.randint(0, self.random_depths.shape[0] - 1)
+        return self.random_depths[i_rand]
+
+    def apply_background_noise(self, original_depth):
+        img_path = os.path.join(os.path.dirname(__file__), self.config['img_path'])
+        # randomly get an image as background
+        depth_files = os.listdir(img_path)
+        depth_files = [file for file in depth_files if file.endswith(('.jpg', '.jpeg', '.png'))]
+        random_depth = random.choice(depth_files)
+        bg_img = Image.open(os.path.join(img_path, random_depth))
+        bg_img = bg_img.resize(original_depth.shape[:2])
+        bg_depth = np.mean(bg_img, axis=-1)/255
+        original_depth = np.array(original_depth.copy()).astype(np.uint8)
+
+        if original_depth.shape != bg_depth.shape:
+            raise ValueError("Original and disturbing images must have the same size")
+
+        composite_depth = copy.deepcopy(original_depth)
+        depth_ts = self.config['background_noise']['depth']
+        composite_depth[original_depth > depth_ts] = depth_ts + bg_depth[original_depth > depth_ts]*5
+
+        return composite_depth
+
 
 
 

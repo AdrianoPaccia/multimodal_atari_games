@@ -105,8 +105,6 @@ class PendulumSound(PendulumEnv):
                 'state':StateNoise(noise_types=[], game='pendulum'),
 
             },
-            #image_noise_generator=ImageNoise(noise_types=[], game='pendulum'),
-            #sound_noise_generator=SoundNoise(noise_types=[], game='pendulum'),
             noise_frequency=0.0,
             rendering_mode='rgb_array',
             max_steps=200,

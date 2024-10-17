@@ -10,17 +10,17 @@ os.environ["MUJOCO_GL"] = "egl"
 
 
 
-class CheetahImageConfiguration:
+class AntImageConfiguration:
 
     def __init__(
             self,
             noise_generators = {
-                'rgb': ImageNoise(noise_types=[], game='cheetah'),
-                'depth': DepthNoise(noise_types=[], game='cheetah'),
-                'state': StateNoise(noise_types=[], game='cheetah'),
+                'rgb': ImageNoise(noise_types=[], game='ant'),
+                'depth': DepthNoise(noise_types=[], game='ant'),
+                'state': StateNoise(noise_types=[], game='ant'),
 
             },
-            max_episode_steps=300,
+            max_episode_steps=200,
             noise_frequency=0.0
     ):
         self.noise_generators = noise_generators
@@ -29,10 +29,10 @@ class CheetahImageConfiguration:
         self.ep_reward = 0.
         self.device = torch.device('cpu')
         self.obs_modes = ('state', 'rgb', 'depth')
-        self.n_noisy_obs = 1
+        self.n_noisy_obs = 1 #number of obs to inject noise to
 
         #built env
-        env_ = suite.load('cheetah', 'run')
+        env_ = suite.load('quadruped', 'escape')
 
         #wrapper for image observations
         env = pixels.Wrapper(
@@ -50,8 +50,8 @@ class CheetahImageConfiguration:
             observation_key='depth',
         )
 
-        self.state_keys = ['position', 'velocity']
-        self.single_state_shape = (18,)
+        self.state_keys = ['egocentric_state', 'torso_velocity', 'torso_upright', 'imu', 'force_torque', 'origin', 'rangefinder']
+        self.single_state_shape = (101,)
 
         self.state_space = spaces.Box(low=-8., high=8., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
@@ -85,16 +85,16 @@ class CheetahImageConfiguration:
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        observation, reward, done, truncated, info = self.step(a)
+        self.observation, reward, done, truncated, info = self.step(a)
 
         if self.env._step_count >= self.max_episode_steps:
             truncated = True
 
         #assemble the obs
         obs = dict(
-            state=self.env._env.physics.get_state(),
-            rgb=observation['rgb'].copy(),
-            depth=observation['depth'].copy()
+            state=np.concatenate([self.observation[k].reshape(-1) for k in self.state_keys]),
+            rgb=self.observation['rgb'].copy(),
+            depth=self.observation['depth'].copy()
         )
 
         # inject noise
@@ -156,4 +156,5 @@ class CheetahImageConfiguration:
         self.env.close()
 
     def get_state(self):
-        return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)
+        s = np.concatenate([self.observation[k].reshape(-1) for k in self.state_keys])
+        return torch.from_numpy(s).unsqueeze(0)

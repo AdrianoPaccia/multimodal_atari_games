@@ -53,18 +53,43 @@ def build_env_atari(game, noise_freq=0.0, noise_types:list=['nonoise'], render=F
         noise_frequency=noise_freq
     )
 
-def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_episode_steps=1000, render=False, **kwargs):
-    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, StateNoise
+def build_env_mujoco(
+        game,
+        noise_freq=0.0,
+        noise_types:list=['nonoise'],
+        noise_modes:list=[],
+        max_episode_steps=1000,
+        **kwargs):
 
-    if game=='cheetah':
+    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, StateNoise, DepthNoise
+    noise_generators = {}
+    if 'rgb' in noise_modes:
+        noise_generators['rgb'] = ImageNoise(noise_types=noise_types, game=game,
+                                             **{'bounds': (kwargs['low_bounds']['rgb'], kwargs['high_bounds']['rgb'])})
+    if 'depth' in noise_modes:
+        noise_generators['depth'] = DepthNoise(noise_types=noise_types, game=game,
+                                               **{'bounds': (kwargs['low_bounds']['depth'], kwargs['high_bounds']['depth'])})
+    if 'state' in noise_modes:
+        noise_generators['state'] = StateNoise(noise_types=noise_types, game=game,
+                                               **{'low_bounds': (
+                                               kwargs['low_bounds']['state'], kwargs['high_bounds']['state'])})
+
+    if game == 'cheetah':
         from multimodal_atari_games.multimodal_atari_games.mujoco.cheetah_env import CheetahImageConfiguration
 
         return CheetahImageConfiguration(
-                render_mode='rgb_array',
-                image_noise_generator=ImageNoise(game='cheetah', noise_types=noise_types),
-                state_noise_generator=StateNoise(game='cheetah', noise_types=noise_types),
-                max_episode_steps=max_episode_steps,
-                noise_frequency=noise_freq
+            noise_generators=noise_generators,
+            max_episode_steps=max_episode_steps,
+            noise_frequency=noise_freq
+            )
+
+    elif game=='ant':
+        from multimodal_atari_games.multimodal_atari_games.mujoco.ant_env import AntImageConfiguration
+
+        return AntImageConfiguration(
+            noise_generators=noise_generators,
+            max_episode_steps=max_episode_steps,
+            noise_frequency=noise_freq
             )
 
 
@@ -72,7 +97,6 @@ def build_env_mujoco(game, noise_freq=0.0, noise_types:list=['nonoise'], max_epi
         from multimodal_atari_games.multimodal_atari_games.mujoco.humanoid_env import HumanoidImageConfiguration
 
         return HumanoidImageConfiguration(
-            render_mode='rgb_array', #None,
             image_noise_generator=ImageNoise(game='humanoid', noise_types=noise_types),
             max_episode_steps=max_episode_steps,
             noise_frequency=noise_freq
