@@ -27,33 +27,48 @@ class CheetahImageConfiguration:
         self.noise_frequency = noise_frequency
         self.ep_reward = 0.
         self.device = torch.device('cpu')
-        self.obs_modes = ['state','rgb']
+        self.obs_modes = ('state', 'rgb', 'depth')
 
-        #env setup
+        #built env
         env_ = suite.load('cheetah', 'run')
-        self.env = pixels.Wrapper(
+
+        #wrapper for image observations
+        env = pixels.Wrapper(
             env_,
             pixels_only=False,
             render_kwargs={'height': 100, 'width': 100, 'camera_id': 0},
             observation_key='rgb',
         )
-        img_shape = self.env.observation_spec()['rgb'].shape
-        self.state_keys = list(self.env._env.observation_spec().keys())
-        self.single_state_shape = (sum([self.env.observation_spec()[k].shape[0] for k in self.state_keys]),)
+
+        #wrapper for depth observations
+        self.env = pixels.Wrapper(
+            env,
+            pixels_only=False,
+            render_kwargs={'height': 100, 'width': 100, 'camera_id': 0, 'depth':True},
+            observation_key='depth',
+        )
+
+        self.state_keys = ['position', 'velocity']
+        self.single_state_shape = (18,)
 
         self.state_space = spaces.Box(low=-8., high=8., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
             self.state_space,  # state
-            spaces.Box(low=0, high=255, shape=img_shape),  # image
+            spaces.Box(low=0, high=255, shape=self.env.observation_spec()['rgb'].shape),  # image
+            spaces.Box(low=0, high=100, shape=self.env.observation_spec()['depth'].shape),  # depth
         ])
 
         self.observation_space_mm = spaces.Tuple([
             spaces.Box(low=-8., high=8., shape=(1,)+self.single_state_shape),  # state
-            spaces.Box(low=0, high=255, shape=(1,)+img_shape),  # image
+            spaces.Box(low=0, high=255, shape=(1,)+self.env.observation_spec()['rgb'].shape),  # image
+            spaces.Box(low=0, high=100, shape=(1,)+self.env.observation_spec()['depth'].shape),  # depth
         ])
 
-        act_spec = self.env.action_spec()
-        self.single_action_space = spaces.Box(low=act_spec.minimum[0], high=act_spec.maximum[0], shape=act_spec.shape)
+        self.single_action_space = spaces.Box(
+            low=self.env.action_spec().minimum[0],
+            high=self.env.action_spec().maximum[0],
+            shape=self.env.action_spec().shape
+        )
         self.action_space = self.single_action_space
 
 
@@ -69,7 +84,9 @@ class CheetahImageConfiguration:
             a = a.numpy().reshape(-1)
 
         observation, reward, done, truncated, info = self.step(a)
-        state = np.concatenate([v for k, v in observation.items() if k != 'rgb'], axis=-1)
+        state = self.env._env.physics.get_state()
+        image = observation['rgb'].copy()
+        depth = observation['depth'].copy()
 
         if self.env._step_count >= self.max_episode_steps:
             truncated = True
@@ -85,13 +102,14 @@ class CheetahImageConfiguration:
 
         if random.random() < self.noise_frequency:
             if random.random() < 0.5:
-                observation['rgb'] = self.image_noise_generator.get_observation(observation['rgb'])
+                image = self.image_noise_generator.get_observation(image)
             else:
                 state = self.state_noise_generator.get_observation(state)
 
         obs = dict(
             state=torch.from_numpy(state).unsqueeze(0),
-            rgb=torch.from_numpy(observation['rgb'].copy()).unsqueeze(0)
+            rgb=torch.from_numpy(image).unsqueeze(0),
+            depth=torch.from_numpy(depth).unsqueeze(0)
         )
 
         if done or truncated:
@@ -138,5 +156,4 @@ class CheetahImageConfiguration:
         self.env.close()
 
     def get_state(self):
-        s = np.concatenate([getattr(self.env._env.physics,k)() for k in self.state_keys])
-        return torch.from_numpy(s).unsqueeze(0)
+        return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)

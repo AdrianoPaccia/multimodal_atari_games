@@ -141,4 +141,3 @@ class HumanoidImageConfiguration:
 
     def get_state(self):
         return torch.from_numpy(np.concatenate([self.observation[k].reshape(-1) for k in self.state_keys])).unsqueeze(0)
-        #return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)

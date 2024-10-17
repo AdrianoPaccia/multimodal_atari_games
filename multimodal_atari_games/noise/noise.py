@@ -43,7 +43,7 @@ class ImageNoise:
             noisy_image = self.apply_uniform_noise(img)
         elif noise_type == 'background_noise':
             noisy_image = self.apply_background_noise(img)
-        elif noise_type == 'confounders_noise' or 'partial_obs':
+        elif noise_type == 'confounders_noise' or noise_type == 'partial_obs':
             noisy_image = self.apply_confounders_noise(img)
         elif noise_type == 'random_obs':
             noisy_image = self.get_random_observation()
@@ -66,7 +66,6 @@ class ImageNoise:
         return noisy_images, self.noise_types
 
     # all implemented noises
-
     def apply_gaussian_noise(self, image):
         mean = self.config['gaussian_noise']['mu']
         stddev = self.config['gaussian_noise']['std']
@@ -139,6 +138,13 @@ class ImageNoise:
 
         if original_image.shape != background_image.shape:
             raise ValueError("Original and disturbing images must have the same size")
+        dio = 0
+
+        if self.config['background_noise']['color'] is not None:
+            diff = np.linalg.norm(original_image - self.config['background_noise']['color'], axis=2)
+            original_image[diff < self.config['background_noise']['tolerance']] = [255] * 3
+            #blue_pixels = (original_image[:, :, 2] > original_image[:, :, 0]) & (original_image[:, :, 2] > original_image[:, :, 1])
+            #original_image[blue_pixels] = [255] * 3
 
         gray = np.dot(original_image[..., :3], [0.2989, 0.5870, 0.1140])
 

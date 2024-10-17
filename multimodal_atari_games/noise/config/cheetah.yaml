@@ -1,6 +1,10 @@
 images:
   available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
 
+  background_noise:
+    color: [60, 90, 120]
+    tolerance: 45
+
   gaussian_noise:
     mu: 0
     std: 25
@@ -30,7 +34,7 @@ images:
     bits: 16
 
   confounders_noise:
-    max_size: 20
+    max_size: 100
     min_size: 10
     max_num_patches: 3
 

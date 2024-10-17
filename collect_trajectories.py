@@ -52,12 +52,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Multimodal RL")
     parser.add_argument("--game", type=str, help="which game to use", default='pendulum',
                         choices=['pendulum', 'cheetah', 'humanoid', 'pointmaze', 'fetch_reach', 'fetch_push'])
-    parser.add_argument("-num", "--steps_number", type=int, help="How many steps to collect trajectories.", default=3000)
+    parser.add_argument("-num", "--steps_number", default=5000, type=int, help="# traj. steps to collect")
     args = parser.parse_args()
 
     env = build_environment(game=args.game)
-
-
     oup = OrnsteinUhlenbeckProcess(env.action_space)
 
     dataset = {k:[] for k in env.obs_modes}
