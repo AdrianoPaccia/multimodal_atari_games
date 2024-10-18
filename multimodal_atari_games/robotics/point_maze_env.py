@@ -2,7 +2,7 @@ import os
 import random
 import numpy as np
 from matplotlib import pyplot as plt
-from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
+from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise
 from PIL import Image
 import gymnasium as gym
 from gymnasium.wrappers import PixelObservationWrapper

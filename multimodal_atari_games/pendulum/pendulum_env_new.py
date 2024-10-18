@@ -3,8 +3,7 @@
 import numpy as np
 import pickle
 from enum import Enum
-from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
-from multimodal_atari_games.multimodal_atari_games.noise.sound_noise import SoundNoise
+from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, SoundNoise
 import random
 import gymnasium as gym
 from gymnasium.wrappers import PixelObservationWrapper

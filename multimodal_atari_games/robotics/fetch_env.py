@@ -3,7 +3,7 @@ import os
 import random
 import numpy as np
 from matplotlib import pyplot as plt
-from multimodal_atari_games.multimodal_atari_games.noise.image_noise import ImageNoise
+from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise
 from gymnasium_robotics.envs.fetch.push import MujocoFetchPushEnv
 from gymnasium_robotics.envs.fetch.reach import MujocoFetchReachEnv
 
@@ -13,8 +13,9 @@ class FetchReachImageConfiguration(MujocoFetchReachEnv):
     def __init__(
             self,
             render_mode='rgb_array',
-            image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='fetch_reach'),
-            max_episode_steps=300,
+            image_noise_generator=ImageNoise(noise_types=[], game='fetch_reach'),
+            noise_frequency=0.0,
+            max_episode_steps=200,
             reward_type='dense'
 
     ):
@@ -22,6 +23,7 @@ class FetchReachImageConfiguration(MujocoFetchReachEnv):
             raise ValueError('Reward type must be either "sparse" or "dense"')
         super().__init__( render_mode=render_mode, reward_type=reward_type)
         self.image_noise_generator=image_noise_generator
+        self.noise_freq = noise_frequency
         self.max_episode_steps=max_episode_steps
 
     def step(self, a):
@@ -44,7 +46,7 @@ class FetchReachImageConfiguration(MujocoFetchReachEnv):
             #img = Image.fromarray(np.uint8(image_observation))
             #img = img.resize((200,200))
             #image_observation = np.array(img)
-            if random.random() < self.image_noise_generator.frequency:
+            if random.random() < self.noise_frequency:
                 image_observation = self.image_noise_generator.get_observation(image_observation)
             return (image_observation,config_obs), reward, done, info, state
         except:
@@ -85,8 +87,9 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
     def __init__(
             self,
             render_mode='rgb_array',
-            image_noise_generator=ImageNoise(noise_types=[], frequency=0.0, game='fetch_push'),
-            max_episode_steps=300,
+            image_noise_generator=ImageNoise(noise_types=[], game='fetch_push'),
+            noise_frequency=0.0,
+            max_episode_steps=200,
             reward_type='dense'
 
     ):
@@ -94,6 +97,7 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
             raise ValueError('Reward type must be either "sparse" or "dense"')
         super().__init__( render_mode=render_mode, reward_type=reward_type)
         self.image_noise_generator=image_noise_generator
+        self.noise_freq = noise_frequency
         self.max_episode_steps=max_episode_steps
 
     def step(self, a):
@@ -112,7 +116,7 @@ class FetchPushImageConfiguration(MujocoFetchPushEnv):
         # get image observation
         try:
             image_observation = super().render()[50:350, 100:400]
-            if random.random() < self.image_noise_generator.frequency:
+            if random.random() < self.noise_frequency:
                 image_observation = self.image_noise_generator.get_observation(image_observation)
             return (image_observation,config_obs), reward, done, info, state
         except:

@@ -1,0 +1,35 @@
+cheetah:
+  game: 'cheetah'
+  task: 'run'
+  state_keys: ['position', 'velocity']
+  max_episode_steps: 200
+
+walker:
+  game: 'walker'
+  task: 'run'
+  state_keys: ['orientations', 'height', 'velocity']
+  max_episode_steps: 200
+
+humanoid:
+  game: 'humanoid'
+  task: 'run'
+  state_keys: ['joint_angles', 'head_height', 'extremities', 'torso_vertical', 'com_velocity', 'velocity']
+  max_episode_steps: 200
+
+ant:
+  game: 'quadruped'
+  task: 'run'
+  state_keys: ['egocentric_state', 'torso_velocity', 'torso_upright', 'imu', 'force_torque']
+  max_episode_steps: 200
+
+antescape:
+  game: 'quadruped'
+  task: 'escape'
+  state_keys: ['egocentric_state', 'torso_velocity', 'torso_upright', 'imu', 'force_torque', 'origin', 'rangefinder']
+  max_episode_steps: 200
+
+bringball:
+  game: 'manipulator'
+  task: 'bring_ball'
+  state_keys: ['arm_pos', 'arm_vel', 'touch', 'hand_pos', 'object_pos', 'object_vel', 'target_pos']
+  max_episode_steps: 200

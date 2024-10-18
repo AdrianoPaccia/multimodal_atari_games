@@ -1,7 +1,8 @@
 images:
-  available_noises: ['nonoise','random_obs', 'gaussian_noise', 'salt_pepper_noise', 'poisson_noise', 'speckle_noise',
-                     'uniform_noise', 'background_noise',  'gaussian_blur', 'motion_blur', 'quantization_noise',
-                     'confounders_noise', 'partial_obs', 'sensor_fail']
+  available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
+  background_noise:
+    color: [60, 90, 120]
+    tolerance: 45
   gaussian_noise:
     mu: 0
     std: 25
@@ -23,27 +24,42 @@ images:
   quantization_noise:
     bits: 16
   confounders_noise:
-    max_size: 100
+    max_size: 50
     min_size: 10
     max_num_patches: 3
   img_path: 'bg_images'
 
-sounds:
+
+depths:
   available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
+  bounds:
+    min_depth: 5
+    max_depth: 50
+  background_noise:
+    depth: 60
   gaussian_noise:
-    amplitude_mu: 0.
-    amplitude_std: 0.01
-    frequency_mu: 0.
-    frequency_std: 10.
-  white_noise: { }
-  pink_noise: { }
-  brownian_noise: { }
-  blue_noise: { }
-  poisson_noise:
-    mean: 0.1
+    mu: 0
+    std: 25
+  confounders_noise:
+    max_size: 50
+    min_size: 10
+    max_num_patches: 3
+  img_path: 'bg_images'
+
+
 
 states:
   available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
   gaussian_noise:
-    mu: 0.
-    std: 0.01
+    mu: 0
+    std: 0.1
+  poisson_noise:
+    mean: 0.1
+
+rams:
+  available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
+  gaussian_noise:
+    mu: 0
+    std: 0.1
+  poisson_noise:
+    mean: 0.1
