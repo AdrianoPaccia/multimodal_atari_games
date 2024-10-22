@@ -7,6 +7,7 @@ from gym import spaces
 from dm_control import suite
 from dm_control.suite.wrappers import pixels
 os.environ["MUJOCO_GL"] = "egl"
+import matplotlib.pyplot as plt
 
 
 
@@ -51,9 +52,9 @@ class CheetahImageConfiguration:
         )
 
         self.state_keys = ['position', 'velocity']
-        self.single_state_shape = (18,)
+        self.single_state_shape = (17,)
 
-        self.state_space = spaces.Box(low=-8., high=8., shape=self.single_state_shape)
+        self.state_space = spaces.Box(low=-10., high=10., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
             self.state_space,  # state
             spaces.Box(low=0, high=255, shape=self.env.observation_spec()['rgb'].shape),  # image
@@ -85,16 +86,16 @@ class CheetahImageConfiguration:
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        observation, reward, done, truncated, info = self.step(a)
+        self.observation, reward, done, truncated, info = self.step(a)
 
         if self.env._step_count >= self.max_episode_steps:
             truncated = True
 
         #assemble the obs
         obs = dict(
-            state=self.env._env.physics.get_state(),
-            rgb=observation['rgb'].copy(),
-            depth=observation['depth'].copy()
+            state=self.env._env.physics.get_state()[1:],
+            rgb=self.observation['rgb'].copy(),
+            depth=self.observation['depth'].copy()
         )
 
         # inject noise
@@ -126,7 +127,13 @@ class CheetahImageConfiguration:
         return obs, reward, done, truncated, info
 
     def render(self):
-        return self.env._env.physics.render()
+        ax = plt.gca()
+        ax.clear()
+        img = self.observation['rgb']#self.env._env.physics.render()
+        ax.imshow(img)
+        plt.draw()
+        plt.pause(0.01)
+        return img
 
     def reset(self):
         self.ep_reward = 0.
@@ -156,4 +163,4 @@ class CheetahImageConfiguration:
         self.env.close()
 
     def get_state(self):
-        return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)
+        return torch.from_numpy(self.env._env.physics.get_state()[1:]).unsqueeze(0)

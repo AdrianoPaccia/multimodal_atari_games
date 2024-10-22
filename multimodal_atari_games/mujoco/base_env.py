@@ -4,10 +4,10 @@ import numpy as np
 import torch
 from gym import spaces
 from dm_control import suite
+from dm_control import suite
 from dm_control.suite.wrappers import pixels
 os.environ["MUJOCO_GL"] = "egl"
-
-
+import matplotlib.pyplot as plt
 
 class BaseMujocoEnv:
 
@@ -96,7 +96,7 @@ class BaseMujocoEnv:
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        observation, reward, done, truncated, info = self.step(a)
+        self.observation, reward, done, truncated, info = self.step(a)
 
         if self.env._step_count >= self.max_episode_steps:
             truncated = True
@@ -104,8 +104,8 @@ class BaseMujocoEnv:
         #assemble the obs
         obs = dict(
             state= np.concatenate([self.observation[k].reshape(-1) for k in self.state_keys]),
-            rgb=observation['rgb'].copy(),
-            depth=observation['depth'].copy()
+            rgb=self.observation['rgb'].copy(),
+            depth=self.observation['depth'].copy()
         )
 
         # inject noise
@@ -137,7 +137,13 @@ class BaseMujocoEnv:
         return obs, reward, done, truncated, info
 
     def render(self):
-        return self.env._env.physics.render()
+        ax = plt.gca()
+        ax.clear()
+        img = self.observation['rgb']#self.env._env.physics.render()
+        ax.imshow(img)
+        plt.draw()
+        plt.pause(0.01)
+        return img
 
     def reset(self):
         """Method for resetting the parent environment"""

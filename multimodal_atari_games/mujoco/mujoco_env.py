@@ -31,6 +31,6 @@ class MujocoEnv(BaseMujocoEnv):
 
 if __name__ == '__main__':
     env = MujocoEnv(
-        env='bringball',
+        env='ant',
     )
     env.show_description()
