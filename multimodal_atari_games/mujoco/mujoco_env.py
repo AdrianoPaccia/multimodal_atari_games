@@ -15,8 +15,8 @@ class MujocoEnv(BaseMujocoEnv):
     def __init__(
             self,
             env: str,
-            noise_generators = noise_generators,
-            noise_frequency = 0.0
+            noise_generators=noise_generators,
+            noise_frequency=0.0
     ):
 
         super().__init__(

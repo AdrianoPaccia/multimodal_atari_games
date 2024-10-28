@@ -60,6 +60,7 @@ def build_env_mujoco(
         noise_generators['state'] = StateNoise(noise_types=noise_types, game=game,
                                                **{'bounds': (kwargs['low_bounds']['state'], kwargs['high_bounds']['state'])})
 
+    '''
     if game == 'cheetah':
         from multimodal_atari_games.multimodal_atari_games.mujoco.cheetah_env import CheetahImageConfiguration
 
@@ -74,6 +75,13 @@ def build_env_mujoco(
             noise_generators=noise_generators,
             noise_frequency=noise_freq
             )
+    '''
+    from multimodal_atari_games.multimodal_atari_games.mujoco.mujoco_env import MujocoEnv
+    return MujocoEnv(
+        env=game,
+        noise_generators=noise_generators,
+        noise_frequency=noise_freq
+    )
 
 def build_env_walker_(
         game,

@@ -67,14 +67,14 @@ class BaseMujocoEnv:
 
         self.single_observation_space_mm = spaces.Tuple([
             self.state_space,  # state
-            spaces.Box(low=0, high=255, shape=self.env.observation_spec()['rgb'].shape),  # image
-            spaces.Box(low=0, high=100, shape=self.env.observation_spec()['depth'].shape),  # depth
+            spaces.Box(low=0, high=255, shape=(100, 100, 3)),  # image
+            spaces.Box(low=0, high=100, shape=(100, 100)),  # depth
         ])
 
         self.observation_space_mm = spaces.Tuple([
             spaces.Box(low=-10., high=10., shape=(1,)+self.single_state_shape),  # state
-            spaces.Box(low=0, high=255, shape=(1,)+self.env.observation_spec()['rgb'].shape),  # image
-            spaces.Box(low=0, high=100, shape=(1,)+self.env.observation_spec()['depth'].shape),  # depth
+            spaces.Box(low=0, high=255, shape=(1, 100, 100, 3)),  # image
+            spaces.Box(low=0, high=100, shape=(1, 100, 100)),  # depth
         ])
 
         self.single_action_space = spaces.Box(
