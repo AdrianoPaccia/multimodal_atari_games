@@ -3,7 +3,9 @@ def build_env_pendulum(
         noise_modes: list = [],
         noise_freq: float = 0.0,
         noise_types: list = ['nonoise'],
-        render=False):
+        render=False,
+        **kwargs
+    ):
     """
     Builds the pendulum environment.
     :param config: sound configuration NameSpace (original_frequency, sound_velocity, sound_receivers)
@@ -72,6 +74,30 @@ def build_env_mujoco(
             noise_generators=noise_generators,
             noise_frequency=noise_freq
             )
+
+def build_env_walker_(
+        game,
+        noise_freq=0.0,
+        noise_types:list=['nonoise'],
+        noise_modes:list=[],
+        **kwargs):
+
+    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, StateNoise, DepthNoise
+    noise_generators = {}
+    if 'rgb' in noise_modes:
+        noise_generators['rgb'] = ImageNoise(noise_types=noise_types, game=game,
+                                             **{'bounds': (kwargs['low_bounds']['rgb'], kwargs['high_bounds']['rgb'])})
+
+    if 'state' in noise_modes:
+        noise_generators['state'] = StateNoise(noise_types=noise_types, game=game,
+                                               **{'bounds': (kwargs['low_bounds']['state'], kwargs['high_bounds']['state'])})
+
+    from multimodal_atari_games.multimodal_atari_games.mujoco.walker_env import WalkerEnv
+
+    return WalkerEnv(
+        noise_generators=noise_generators,
+        noise_frequency=noise_freq
+        )
 
 
 

@@ -8,7 +8,7 @@ from dm_control import suite
 from dm_control.suite.wrappers import pixels
 os.environ["MUJOCO_GL"] = "egl"
 import matplotlib.pyplot as plt
-
+import matplotlib
 
 
 class CheetahImageConfiguration:
@@ -21,7 +21,7 @@ class CheetahImageConfiguration:
                 'state': StateNoise(noise_types=[], game='cheetah'),
 
             },
-            max_episode_steps=300,
+            max_episode_steps=200,
             noise_frequency=0.0
     ):
         self.noise_generators = noise_generators
@@ -52,7 +52,7 @@ class CheetahImageConfiguration:
         )
 
         self.state_keys = ['position', 'velocity']
-        self.single_state_shape = (17,)
+        self.single_state_shape = (18,)
 
         self.state_space = spaces.Box(low=-10., high=10., shape=self.single_state_shape)
         self.single_observation_space_mm = spaces.Tuple([
@@ -93,7 +93,8 @@ class CheetahImageConfiguration:
 
         #assemble the obs
         obs = dict(
-            state=self.env._env.physics.get_state()[1:],
+            state=self.env._env.physics.get_state(),
+            #state=self.env._env.physics.get_state()[1:],
             rgb=self.observation['rgb'].copy(),
             depth=self.observation['depth'].copy()
         )
@@ -127,12 +128,13 @@ class CheetahImageConfiguration:
         return obs, reward, done, truncated, info
 
     def render(self):
+        matplotlib.use('TkAgg')
         ax = plt.gca()
         ax.clear()
-        img = self.observation['rgb']#self.env._env.physics.render()
+        img = self.observation['rgb']
         ax.imshow(img)
         plt.draw()
-        plt.pause(0.01)
+        plt.pause(0.001)
         return img
 
     def reset(self):
@@ -163,4 +165,5 @@ class CheetahImageConfiguration:
         self.env.close()
 
     def get_state(self):
-        return torch.from_numpy(self.env._env.physics.get_state()[1:]).unsqueeze(0)
+        return torch.from_numpy(self.env._env.physics.get_state()).unsqueeze(0)
+        #return torch.from_numpy(self.env._env.physics.get_state()[1:]).unsqueeze(0)

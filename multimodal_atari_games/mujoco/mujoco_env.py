@@ -5,7 +5,6 @@ from os.path import dirname, abspath
 
 with open(dirname(abspath(__file__)) + '/configurations.yaml', "r") as file:
     config = yaml.safe_load(file)
-
 noise_generators = {
     'rgb': ImageNoise(noise_types=[], game='cheetah'),
     'depth': DepthNoise(noise_types=[], game='cheetah'),
@@ -19,6 +18,7 @@ class MujocoEnv(BaseMujocoEnv):
             noise_generators = noise_generators,
             noise_frequency = 0.0
     ):
+
         super().__init__(
             game=config[env]['game'],
             task=config[env]['task'],
@@ -26,7 +26,7 @@ class MujocoEnv(BaseMujocoEnv):
             max_episode_steps=config[env]['max_episode_steps'],
             noise_generators=noise_generators,
             noise_frequency=noise_frequency,
-
+            **dict(camera_id=config[env]['camera'])
         )
 
 if __name__ == '__main__':

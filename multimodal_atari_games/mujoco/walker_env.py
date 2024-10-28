@@ -2,31 +2,23 @@ import os
 import random
 import numpy as np
 import torch
-from gym import spaces
-from dm_control import suite
-from dm_control import suite
-from dm_control.suite.wrappers import pixels
-os.environ["MUJOCO_GL"] = "egl"
+from gymnasium import spaces
+import gymnasium as gym
+from gymnasium.wrappers import PixelObservationWrapper
 import matplotlib.pyplot as plt
 import matplotlib
-
-class BaseMujocoEnv:
+from torchvision.transforms.functional import pil_to_tensor
+from PIL import Image
+class WalkerEnv:
 
     def __init__(
             self,
-            game='cheetah',
-            task='run',
-            state_keys=('position', 'velocity'),
             noise_generators: dict ={},
             max_episode_steps: int = 300,
             noise_frequency: float = 0.0,
-            n_noisy_obs: int = 1,
-            **kwargs
+            n_noisy_obs: int = 1
     ):
-        self.game = game
-        self.task = task
-        self.obs_modes = ('state', 'rgb', 'depth')
-        self.state_keys = state_keys
+        self.obs_modes = ('state', 'rgb')
 
         if not set(tuple(noise_generators.keys())) <= set(self.obs_modes):
             raise ValueError('noise_generators keys are not a subset of the obs_modes')
@@ -42,92 +34,74 @@ class BaseMujocoEnv:
             self.n_noisy_obs = n_noisy_obs
 
         #built env
-        env_ = suite.load(game, task, environment_kwargs=dict(flat_observation=True))
-
-        #wrapper for image observations
-        env = pixels.Wrapper(
-            env_,
+        self.env = PixelObservationWrapper(
+            env=gym.make('Walker2d-v4', render_mode='rgb_array', max_episode_steps=max_episode_steps),
             pixels_only=False,
-            render_kwargs={'height': 100, 'width': 100, 'camera_id': kwargs['camera_id']},
-            observation_key='rgb',
+            pixel_keys=("rgb",),
         )
 
-        #wrapper for depth observations
-        self.env = pixels.Wrapper(
-            env,
-            pixels_only=False,
-            render_kwargs={'height': 100, 'width': 100, 'camera_id': kwargs['camera_id'], 'depth': True},
-            observation_key='depth',
-        )
-
-        init_step = self.env.reset()
-        self.observation = init_step.observation
-        self.single_state_shape = self.observation['observations'].shape
-        self.state_space = spaces.Box(low=-10., high=10., shape=self.single_state_shape)
+        self.single_state_shape = self.env.observation_space['state'].shape
+        self.state_space = self.env.observation_space['state']
 
         self.single_observation_space_mm = spaces.Tuple([
             self.state_space,  # state
-            spaces.Box(low=0, high=255, shape=self.env.observation_spec()['rgb'].shape),  # image
-            spaces.Box(low=0, high=100, shape=self.env.observation_spec()['depth'].shape),  # depth
+            spaces.Box(low=0, high=255, shape=(100,100,3)),  # image
         ])
 
         self.observation_space_mm = spaces.Tuple([
             spaces.Box(low=-10., high=10., shape=(1,)+self.single_state_shape),  # state
-            spaces.Box(low=0, high=255, shape=(1,)+self.env.observation_spec()['rgb'].shape),  # image
-            spaces.Box(low=0, high=100, shape=(1,)+self.env.observation_spec()['depth'].shape),  # depth
+            spaces.Box(low=0, high=255, shape=(1,100,100,3)),  # image
         ])
-
-        self.single_action_space = spaces.Box(
-            low=self.env.action_spec().minimum[0],
-            high=self.env.action_spec().maximum[0],
-            shape=self.env.action_spec().shape
-        )
-        self.action_space = self.single_action_space
+        self.action_space = self.env.action_space
+        self.single_action_space = self.env.action_space
 
 
     def step(self, a):
         """Method for step in the parent environment"""
         timestep = self.env.step(a)
-        truncated = self.env._step_count > self.max_episode_steps
+        #truncated = self.env._step_count > self.max_episode_steps
         self.ep_reward += timestep.reward
         return timestep.observation, timestep.reward, timestep.last(), truncated, {}
 
     def step_mm(self, a):
         """Method for step in the multimodal environment"""
-
         if torch.is_tensor(a):
             a = a.numpy().reshape(-1)
 
-        self.observation, reward, done, truncated, info = self.step(a)
+        self.observation, reward, done, truncated, info = self.env.step(a)
 
-        if self.env._step_count >= self.max_episode_steps:
-            truncated = True
+        self.ep_reward += reward
+        self.ep_step +=1
+
+        #if self.env._step_count >= self.max_episode_steps:
+        #    truncated = True
 
         #assemble the obs
         obs = dict(
-            state=self.observation['observations'].copy(),
+            state=self.observation['state'].copy(),
             rgb=self.observation['rgb'].copy(),
-            depth=self.observation['depth'].copy()
         )
 
         # inject noise
         if random.random() < self.noise_frequency:
             for m in random.sample(list(self.noise_generators.keys()), self.n_noisy_obs):
                 obs[m] = self.noise_generators[m].get_observation(obs[m])
+        obs['state'] = torch.from_numpy(obs['state']).unsqueeze(0)
+        img = Image.fromarray(obs['rgb'])
+        obs['rgb'] = torch.from_numpy(np.asarray(img.resize((100,100)))).unsqueeze(0)
 
-        obs = {m: torch.from_numpy(o).unsqueeze(0) for m,o in obs.items()}
         reward = torch.tensor([reward]).unsqueeze(0)
         done = torch.tensor([done]).unsqueeze(0)
         truncated = torch.tensor([truncated]).unsqueeze(0)
 
         info = {
-            'elapsed_steps': torch.tensor([self.env._step_count]),
+            'elapsed_steps': torch.tensor([self.ep_step]),
             'episode': {'r': torch.tensor([self.ep_reward])}
         }
 
         if done or truncated:
             info['final_info'] = {
-                'elapsed_steps': torch.tensor([self.env._step_count]),
+                'elapsed_steps': torch.tensor([self.ep_step]),
                 'episode': {
                     'r': torch.tensor([self.ep_reward]),
                     '_r': torch.tensor([True])
@@ -142,7 +116,7 @@ class BaseMujocoEnv:
         matplotlib.use('TkAgg')
         ax = plt.gca()
         ax.clear()
-        img = self.observation['rgb'] #self.env.physics.render()
+        img = self.observation['rgb']#self.env._env.physics.render()
         ax.imshow(img)
         plt.draw()
         plt.pause(0.01)
@@ -151,6 +125,7 @@ class BaseMujocoEnv:
     def reset(self):
         """Method for resetting the parent environment"""
         self.ep_reward = 0.
+        self.ep_step = 0
         return self.env.reset()
 
     def reset_mm(self, seed=0, num_initial_steps=1):
@@ -169,7 +144,7 @@ class BaseMujocoEnv:
             raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
 
         for _ in range(num_initial_steps):
-            obs, _, _, _, info = self.step_mm([0.]*sum(self.env.action_spec().shape))
+            obs, _, _, _, info = self.step_mm(self.action_space.sample())
 
         return obs, info
 
@@ -179,7 +154,7 @@ class BaseMujocoEnv:
 
     def get_state(self):
         """Method for getting the current state"""
-        return torch.from_numpy(self.observation['observations']).unsqueeze(0)
+        return torch.from_numpy(self.observation['state']).unsqueeze(0)
 
     def show_description(self):
         print(f"{'-'*20} DESCRIPTION {'-'*20}")
