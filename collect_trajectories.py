@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Multimodal RL")
     parser.add_argument("--game", type=str, help="which game to use", default='pendulum',
-                        choices=['pendulum', 'cheetah', 'humanoid', 'pointmaze', 'fetch_reach', 'fetch_push'])
+                        choices=['ant','pendulum', 'cheetah', 'humanoid', 'walker', 'pointmaze', 'fetch_reach', 'fetch_push'])
     parser.add_argument("-num", "--steps_number", default=5000, type=int, help="# traj. steps to collect")
     args = parser.parse_args()
 
