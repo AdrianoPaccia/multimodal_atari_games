@@ -36,6 +36,7 @@ class BaseMujocoEnv:
         self.noise_frequency = noise_frequency
 
         self.device = torch.device('cpu')
+        if len(self.noise_generators) == 0: n_noisy_obs = 0
         if n_noisy_obs > len(self.noise_generators) or n_noisy_obs < 0:
             raise ValueError('n_noisy_obs must not be greater than the number of modes')
         else:
