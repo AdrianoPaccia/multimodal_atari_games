@@ -18,7 +18,7 @@ def build_environment(game):
             })
         )
 
-    elif game=='cheetah' or game=='humanoid':
+    elif game in ['cheetah', 'ant', 'walker','humanoid']:
         from multimodal_atari_games.build import build_env_mujoco
         return build_env_mujoco(game, max_episode_steps=300)
 
