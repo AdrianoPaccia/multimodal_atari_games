@@ -17,7 +17,7 @@ class BaseMujocoEnv:
             game='cheetah',
             task='run',
             state_keys=('position', 'velocity'),
-            noise_generators: dict ={},
+            noise_generators: dict = {},
             max_episode_steps: int = 300,
             noise_frequency: float = 0.0,
             n_noisy_obs: int = 1,
@@ -149,29 +149,24 @@ class BaseMujocoEnv:
         plt.pause(0.01)
         return img
 
-    def reset(self):
+    def reset(self,seed=None):
         """Method for resetting the parent environment"""
         self.ep_reward = 0.
         return self.env.reset()
 
-    def reset_mm(self, seed=0, num_initial_steps=1):
+    def reset_mm(self, seed=None):
         """Method for resetting the multimodal environment"""
-        self.reset()
+        self.observation = self.reset(seed=seed).observation
+        info = {
+            'elapsed_steps': torch.tensor([self.env._step_count]),
+            'episode': {'r': torch.tensor([self.ep_reward])}
+        }
 
-        if type(num_initial_steps) is list or type(num_initial_steps) is tuple:
-            assert len(num_initial_steps) == 2
-            low = num_initial_steps[0]
-            high = num_initial_steps[1]
-
-            num_initial_steps = np.random.randint(low, high)
-        elif type(num_initial_steps) is int:
-            assert num_initial_steps >= 1
-        else:
-            raise 'Unsupported type for num_initial_steps. Either list/tuple or int'
-
-        for _ in range(num_initial_steps):
-            obs, _, _, _, info = self.step_mm([0.]*sum(self.env.action_spec().shape))
-
+        obs = dict(
+            state=torch.from_numpy(self.observation['observations'].copy()).unsqueeze(0),
+            rgb=torch.from_numpy(self.observation['rgb'].copy()).unsqueeze(0),
+            depth=torch.from_numpy(self.observation['depth'].copy()).unsqueeze(0)
+        )
         return obs, info
 
     def close(self):

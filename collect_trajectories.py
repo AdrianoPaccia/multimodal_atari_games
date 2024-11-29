@@ -58,7 +58,7 @@ if __name__ == "__main__":
     env = build_environment(game=args.game)
     oup = OrnsteinUhlenbeckProcess(env.action_space)
 
-    dataset = {k:[] for k in env.obs_modes}
+    dataset = {k: [] for k in env.obs_modes}
     global_step = 0
     pbar = tqdm(total=args.steps_number)
     while global_step < args.steps_number:

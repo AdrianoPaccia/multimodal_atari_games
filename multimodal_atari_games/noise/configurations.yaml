@@ -47,6 +47,11 @@ depths:
   img_path: 'bg_images'
 
 
+sounds:
+  available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']
+  gaussian_noise:
+    mu: 0
+    std: 0.1
 
 states:
   available_noises: ['nonoise', 'gaussian_noise', 'partial_obs', 'background_noise', 'sensor_fail', 'random_obs']

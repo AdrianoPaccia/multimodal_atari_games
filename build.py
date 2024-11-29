@@ -132,3 +132,38 @@ def build_env_robotics(game, noise_freq=0.0, noise_types:list=['nonoise'], max_e
         )
     else:
         raise ValueError(f'{game} is not a valid game (fetch_reach, fetch_psuh, antmaze, pointmaze)!')
+
+
+def build_env_rlzoo3(
+        game,
+        noise_freq=0.0,
+        noise_types: list = ['nonoise'],
+        noise_modes: list = [],
+        **kwargs
+    ):
+
+    from multimodal_atari_games.multimodal_atari_games.rl_zoo3.rl_zoo3_env import RLzoo3Env
+    from multimodal_atari_games.multimodal_atari_games.noise.noise import ImageNoise, StateNoise
+
+    noise_generators = {}
+    if 'rgb' in noise_modes:
+        noise_generators['rgb'] = ImageNoise(noise_types=noise_types, game=game,
+                                             **{'bounds': (
+                                             kwargs['low_bounds']['rgb'], kwargs['high_bounds']['rgb'])})
+
+    if 'state' in noise_modes:
+        noise_generators['state'] = StateNoise(noise_types=noise_types, game=game,
+                                               **{'bounds': (
+                                               kwargs['low_bounds']['state'], kwargs['high_bounds']['state'])})
+
+    return RLzoo3Env(
+        game=game,
+        noise_generators=noise_generators,
+        noise_frequency=noise_freq,
+    )
+
+if __name__ == '__main__':
+    env = build_env_rlzoo3(
+        game='fetch_push',
+    )
+    env.show_description()

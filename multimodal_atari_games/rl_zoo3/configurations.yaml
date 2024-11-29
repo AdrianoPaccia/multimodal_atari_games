@@ -1,0 +1,13 @@
+fetch_push:
+  id: 'FetchPush-v1'
+  args:
+    env:
+      hyperparams:
+        env_wrapper: sb3_contrib.common.wrappers.TimeFeatureWrapper
+      kwargs:
+        render_mode: rgb_array
+        reward_type: dense
+      dense_reward: 1
+    modes: ['state', 'rgb']
+    algo: tqc
+  max_episode_steps: 50
